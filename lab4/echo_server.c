@@ -78,27 +78,23 @@ int main(int argc, char **argv)
 // 
 
 int read_file(int sd) {
-	char	buf[BUFLEN], *file_name;
-	int 	n;
+	char	buf[BUFLEN];
 	FILE * fp;
-	FILE * fp2;
+
+	//Take file name from user
 	read(sd, buf, BUFLEN);
 
-	file_name = buf;
-
-	fp = fopen(file_name, "r");
+	fp = fopen(buf, "r");
 	if (fp == NULL) {
 		printf("The file was not found.");
 	} else {
-		// Write the file back to the client side
+		// Write the file back to the client side line by line
 		while (fgets(buf, BUFLEN, fp) != NULL) {
-			// buf is the line by line of the file
 			write(sd, buf, BUFLEN);
 		}
 	}
 
 	fclose(fp);
-	fclose(fp2);
 	close(sd);
 
 	return 0;

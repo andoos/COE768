@@ -77,9 +77,12 @@ int main(int argc, char **argv)
 	scanf("%s", file_name);
 	strtok(file_name, "\n");
 	
+	// write file name to server
 	write(sd, file_name, sizeof(file_name));
-	fp = fopen(file_name, "w");
 	
+	// Open a file with the same file name for writing
+	fp = fopen(file_name, "w");
+	// Copy contents line by line and write it to the file
 	while (read(sd, buf, BUFLEN)) {
 		fputs(buf, fp);
 	}
