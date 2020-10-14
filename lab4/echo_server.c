@@ -85,7 +85,6 @@ int read_file(int sd) {
 	file_name = read_file_name(sd);
 
 	fp = fopen(file_name, "r");
-	// printf(fp);
 	if (fp == NULL) {
 		printf("The file was not found.");
 	} else {
@@ -110,11 +109,9 @@ char *read_file_name(int sd) {
 	int 	n;
 	char *file_name = malloc(sizeof (char) * BUFLEN);
 
-	while(n = read(sd, buf, BUFLEN)) 
-		write(sd, buf, n);
-		file_name = buf;
-	close(sd);
+	n = read(sd, buf, BUFLEN);
 
+	file_name = buf;
 	return file_name;
 }
 
