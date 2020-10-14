@@ -71,7 +71,10 @@ int main(int argc, char **argv)
 	//   write(1, rbuf, n);
 	//   printf("Transmit: \n");
 	// }
-	char file_name[] = "lab4_server_file.txt";
+	char *file_name;
+	printf("Enter a file name\n");
+	scanf("%s", file_name);
+	
 	write(sd, file_name, sizeof(file_name));
 
 	close(sd);

@@ -13,7 +13,7 @@
 #define SERVER_TCP_PORT 3000	/* well-known port */
 #define BUFLEN		100	/* buffer length */
 
-int echod(int);
+char *read_file_name(int sd);
 int read_file(int);
 void reaper(int);
 
@@ -78,17 +78,18 @@ int main(int argc, char **argv)
 // 
 
 int read_file(int sd) {
-	char	buf[BUFLEN];
+	char	buf[BUFLEN], *file_name;
 	int 	n;
 	FILE * fp;
 	FILE * fp2;
+	file_name = read_file_name(sd);
 
-	fp = fopen("lab4_server_file.txt", "r");
-	fp2 = fopen("output.txt", "w");
+	fp = fopen(file_name, "r");
 	if (fp == NULL) {
 		printf("The file was not found.");
 	} else {
 		// Write the file back to the client side
+		fp2 = fopen("output.txt", "w");
 		while (fgets(buf, BUFLEN, fp) != NULL) {
 			// buf is the line by line of the file
 			fputs(buf, fp2);
@@ -102,17 +103,18 @@ int read_file(int sd) {
 	return 0;
 }
 
-/*	echod program	*/
-int echod(int sd)
-{
+/*	read the file name from the client program	*/
+char *read_file_name(int sd) {
 	char	*bp, buf[BUFLEN];
-	int 	n, bytes_to_read;
+	int 	n;
+	char *file_name = malloc(sizeof (char) * BUFLEN);
 
 	while(n = read(sd, buf, BUFLEN)) 
 		write(sd, buf, n);
+		file_name = buf;
 	close(sd);
 
-	return(0);
+	return file_name;
 }
 
 /*	reaper		*/
