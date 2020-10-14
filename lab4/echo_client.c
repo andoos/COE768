@@ -81,6 +81,7 @@ int main(int argc, char **argv)
 	write(sd, file_name, sizeof(file_name));
 
 	read(sd, buf, 1);
+	printf("%s", buf);
 	if (strcmp(buf, "0")) {
 		read(sd, buf, BUFLEN);
 		printf("%s", buf);
@@ -92,12 +93,6 @@ int main(int argc, char **argv)
 			fputs(buf, fp);
 		}
 	}
-
-	
-	
-
-	
-	
 
 	close(sd);
 	return(0);

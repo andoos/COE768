@@ -84,7 +84,6 @@ int read_file(int sd) {
 	//Take file name from user
 	read(sd, buf, BUFLEN);
 
-
 	fp = fopen(buf, "r");
 	if (fp == NULL) {
 		write(sd, "0", 1);
