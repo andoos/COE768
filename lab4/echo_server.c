@@ -82,17 +82,18 @@ int read_file(int sd) {
 	int 	n;
 	FILE * fp;
 	FILE * fp2;
-	file_name = read_file_name(sd);
+	read(sd, buf, BUFLEN);
+
+	file_name = buf;
 
 	fp = fopen(file_name, "r");
 	if (fp == NULL) {
 		printf("The file was not found.");
 	} else {
 		// Write the file back to the client side
-		fp2 = fopen("output.txt", "w");
 		while (fgets(buf, BUFLEN, fp) != NULL) {
 			// buf is the line by line of the file
-			fputs(buf, fp2);
+			write(sd, buf, BUFLEN);
 		}
 	}
 
@@ -104,16 +105,16 @@ int read_file(int sd) {
 }
 
 /*	read the file name from the client program	*/
-char *read_file_name(int sd) {
-	char	*bp, buf[BUFLEN];
-	int 	n;
-	char *file_name = malloc(sizeof (char) * BUFLEN);
+// char *read_file_name(int sd) {
+// 	char	*bp, buf[BUFLEN];
+// 	int 	n;
+// 	char *file_name = malloc(sizeof (char) * BUFLEN);
 
-	n = read(sd, buf, BUFLEN);
+// 	n = read(sd, buf, BUFLEN);
 
-	file_name = buf;
-	return file_name;
-}
+// 	file_name = buf;
+// 	return file_name;
+// }
 
 /*	reaper		*/
 void	reaper(int sig)

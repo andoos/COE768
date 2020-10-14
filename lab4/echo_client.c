@@ -20,6 +20,8 @@ int main(int argc, char **argv)
 	struct	hostent		*hp;
 	struct	sockaddr_in server;
 	char	*host, *bp, rbuf[BUFLEN], sbuf[BUFLEN];
+	FILE *fp;
+	char buf[BUFLEN];
 
 	switch(argc){
 	case 2:
@@ -76,6 +78,11 @@ int main(int argc, char **argv)
 	strtok(file_name, "\n");
 	
 	write(sd, file_name, sizeof(file_name));
+	fp = fopen(file_name, "w");
+	
+	while (read(sd, buf, BUFLEN)) {
+		fputs(buf, fp);
+	}
 
 	close(sd);
 	return(0);
