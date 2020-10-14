@@ -81,17 +81,22 @@ int read_file(int sd) {
 	char	buf[BUFLEN];
 	int 	n;
 	FILE * fp;
+	FILE * fp2;
 
 	fp = fopen("lab4_server_file.txt", "r");
+	fp2 = fopen("output.txt", "w");
 	if (fp == NULL) {
 		printf("The file was not found.");
 	} else {
 		// Write the file back to the client side
 		while (fgets(buf, BUFLEN, fp) != NULL) {
-			printf("%s", buf);
+			// buf is the line by line of the file
+			fputs(buf, fp2);
 		}
-
 	}
+
+	fclose(fp);
+	fclose(fp2);
 	close(sd);
 
 	return 0;
