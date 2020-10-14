@@ -84,10 +84,13 @@ int read_file(int sd) {
 	//Take file name from user
 	read(sd, buf, BUFLEN);
 
+
 	fp = fopen(buf, "r");
 	if (fp == NULL) {
-		printf("The file was not found.");
+		write(sd, "0", 1);
+		write(sd, "The file was not found.", BUFLEN);
 	} else {
+		write(sd, "1", 1);
 		// Write the file back to the client side line by line
 		while (fgets(buf, BUFLEN, fp) != NULL) {
 			write(sd, buf, BUFLEN);

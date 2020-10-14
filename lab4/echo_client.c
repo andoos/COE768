@@ -79,13 +79,25 @@ int main(int argc, char **argv)
 	
 	// write file name to server
 	write(sd, file_name, sizeof(file_name));
-	
-	// Open a file with the same file name for writing
-	fp = fopen(file_name, "w");
-	// Copy contents line by line and write it to the file
-	while (read(sd, buf, BUFLEN)) {
-		fputs(buf, fp);
+
+	read(sd, buf, 1);
+	if (strcmp(buf, "0")) {
+		read(sd, buf, BUFLEN);
+		printf("%s", buf);
+	} else {
+		// Open a file with the same file name for writing
+		fp = fopen(file_name, "w");
+		// Copy contents line by line and write it to the file
+		while (read(sd, buf, BUFLEN)) {
+			fputs(buf, fp);
+		}
 	}
+
+	
+	
+
+	
+	
 
 	close(sd);
 	return(0);
