@@ -81,11 +81,12 @@ int main(int argc, char **argv)
 	write(sd, file_name, sizeof(file_name));
 
 	read(sd, buf, 1);
-	printf("%d", strcmp(buf, "0"));
 	if (strcmp(buf, "0")) {
+		printf("%s\n", "Error message.");
 		read(sd, buf, BUFLEN);
-		printf("%s", buf);
+		printf("%s\n", buf);
 	} else {
+		printf("%s\n", "No error message.");
 		// Open a file with the same file name for writing
 		fp = fopen(file_name, "w");
 		// Copy contents line by line and write it to the file
