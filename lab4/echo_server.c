@@ -85,6 +85,7 @@ int read_file(int sd) {
 	file_name = read_file_name(sd);
 
 	fp = fopen(file_name, "r");
+	// printf(fp);
 	if (fp == NULL) {
 		printf("The file was not found.");
 	} else {

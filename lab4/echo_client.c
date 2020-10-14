@@ -8,8 +8,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <strings.h>
-
-
+#include <string.h>
 
 #define SERVER_TCP_PORT 3000	/* well-known port */
 #define BUFLEN		100	/* buffer length */
@@ -74,6 +73,7 @@ int main(int argc, char **argv)
 	char *file_name;
 	printf("Enter a file name\n");
 	scanf("%s", file_name);
+	strtok(file_name, "\n");
 	
 	write(sd, file_name, sizeof(file_name));
 
