@@ -70,7 +70,7 @@ int main(int argc, char **argv)
 	//   write(1, rbuf, n);
 	//   printf("Transmit: \n");
 	// }
-	char *file_name;
+	char file_name[BUFLEN];
 	printf("Enter a file name\n");
 	scanf("%s", file_name);
 	strtok(file_name, "\n");
