@@ -10,6 +10,7 @@
 #include <time.h>
 #include <sys/stat.h>
 
+#define	BUFSIZE 100
 
 struct pdu {
 char type;
@@ -80,11 +81,9 @@ main(int argc, char *argv[])
 	// }
 
 	while (1) {
-		if (recvfrom(s, data, sizeof(data), 0,(struct sockaddr *)&fsin, &alen) < 0) {
-			printf("error\n");
-		}
+		recvfrom(s, data, BUFSIZE, 0,(struct sockaddr *)&fsin, &alen);
 		cpdu.type = data[0];
-		for (int i = 0; i < 100; i++) {
+		for (int i = 0; i < BUFSIZE; i++) {
 			cpdu.data[i] = data[i + 1];
 		}	
 		if (cpdu.type == 'C') {
@@ -92,19 +91,19 @@ main(int argc, char *argv[])
 			if (fp == NULL) {
 				spdu.type = 'E';
 				strcpy(spdu.data, "File not found");
-				(void) sendto(s, &spdu, strlen(spdu.data)+1, 0,(struct sockaddr *)&fsin, sizeof(fsin));
+				sendto(s, &spdu, strlen(spdu.data)+1, 0,(struct sockaddr *)&fsin, sizeof(fsin));
 			} else {
 				lstat(cpdu.data, &st);
 				size = st.st_size;
-				while(size > 100) {
+				while(size > BUFSIZE) {
 					spdu.type = 'D';
-					fgets(spdu.data, 100, fp);
-					(void) sendto(s, &spdu, strlen(spdu.data)+1, 0,(struct sockaddr *)&fsin, sizeof(fsin));
+					fgets(spdu.data, BUFSIZE, fp);
+					sendto(s, &spdu, strlen(spdu.data)+1, 0,(struct sockaddr *)&fsin, sizeof(fsin));
 					size -= strlen(spdu.data);
 				} 
 				spdu.type = 'F';
 				fgets(spdu.data, size+1, fp);
-				(void) sendto(s, &spdu, strlen(spdu.data)+1, 0,(struct sockaddr *)&fsin, sizeof(fsin));
+				sendto(s, &spdu, strlen(spdu.data)+1, 0,(struct sockaddr *)&fsin, sizeof(fsin));
 				fclose(fp);
 			}
 		}

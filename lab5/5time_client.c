@@ -12,7 +12,7 @@
                                                                                 
 #include <netdb.h>
 
-#define	BUFSIZE 64
+#define	BUFSIZE 100
 
 #define	MSG		"Any Message \n"
 
@@ -37,6 +37,7 @@ main(int argc, char **argv)
 	int	s, n, type;	/* socket descriptor and socket type	*/
 	char data[101];
 	FILE * fp;
+	char content[1000];
 
 	switch (argc) {
 	case 1:
@@ -85,17 +86,15 @@ main(int argc, char **argv)
 	// exit(0);
 
 	while (1) {
-		memset(spdu.data, '\0', 100);
 		printf("Enter a file name or quit:\n");
-		n=read(0, spdu.data, 100);
+		n=read(0, spdu.data, BUFSIZE);
 		if (strcmp(spdu.data, "quit\n") == 0) {
 			exit(0);
 		} else {
 			spdu.type = 'C';
 			spdu.data[n-1] = '\0';
-			(void) write(s, &spdu, n+1);
-			fp = fopen(spdu.data, "w");
-			while (n = read(s, data, 101)) {
+			write(s, &spdu, n+1);
+			while (n = read(s, data, BUFSIZE)) {
 				cpdu.type = data[0];
 				for (int i = 0; i < n; i++) {
 					cpdu.data[i] = data[i + 1];
@@ -105,10 +104,13 @@ main(int argc, char **argv)
 					printf("Error: %s\n", cpdu.data);
 					break;
 				} else if (cpdu.type == 'D') {
-					fputs(cpdu.data,fp);
+					strcat(content, cpdu.data);
 				} else if (cpdu.type == 'F') {
-					fputs(cpdu.data,fp);
+					strcat(content, cpdu.data);
+					fp = fopen(spdu.data, "w");
+					fputs(content,fp);
 					fclose(fp);
+					printf("File recieved\n");
 					break;
 				} else {
 					printf("Error: Got bad identifier\n");
@@ -117,6 +119,7 @@ main(int argc, char **argv)
 				cpdu.data[0]= '\0';
 			}
 		}
-		
+		spdu.data[0]  = '\0';
+		content[0] = '\0';
 	}
 }
