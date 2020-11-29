@@ -23,9 +23,10 @@
 // Non-content PDUs
 struct pdu {
     char type;
-    char data[100];
-} rpdu, dpdu, spdu, tpdu, opdu, apdu, epdu, cpdu, recievedpdu;
+    char *data;
+} rpdu, dpdu, spdu, tpdu, opdu, apdu, epdu, cpdu, recievedpdu, qpdu;
 
+//Peers
 struct peer {
     char *ip;
     int port;
@@ -38,6 +39,7 @@ struct peer {
 // up into a series of packets
 
 // Content PDU
+int len (struct peer reg_peers[]);
 
 int main (int argc, char** argv) {
 
@@ -46,7 +48,8 @@ int main (int argc, char** argv) {
     struct sockaddr_in server, client;
     char data[101];
     int client_len;
-    struct peer tcp_connections[5]; 
+    struct peer registered_peers[1000]; 
+    int registered_peer_count;
 
 
     switch(argc) {
@@ -66,7 +69,7 @@ int main (int argc, char** argv) {
     //Create UDP socket for server
 
     if (s = socket(AF_INET, SOCK_DGRAM, 0) < 0) {
-        fprint(stderr, "Can't create socket\n");
+        fprintf(stderr, "Can't create socket\n");
     }
 
     memset(&server, 0, sizeof(server));
@@ -98,42 +101,104 @@ int main (int argc, char** argv) {
             // in order to add it to the on-line registered content list.
                 
                 // Save name and port
-                peer.ip = client.sin_addr.s_addr;
-                peer.port =  client.sin_port;
-                peer.content_name = recievedpdu.data;
+                rpdu.type = 'R';
+                rpdu.data = recievedpdu.data;
+
+                //warning: s_addr type mismatch with .ip
+                registered_peers[registered_peer_count].ip = client.sin_addr.s_addr;
+                registered_peers[registered_peer_count].port =  client.sin_port;
+                registered_peers[registered_peer_count].content_name = recievedpdu.data;
+                
+                // fix itoa
+                char *port_and_content_name = strcat(itoa(registered_peers[registered_peer_count].port), "\n");
+                port_and_content_name = strcat(port_and_content_name, registered_peers[registered_peer_count].content_name);
+                rpdu.data = port_and_content_name; 
+
+                registered_peer_count += 1;
+
+                sendto(s, &rpdu, strlen(rpdu.data) + 1, 0, (struct sockaddr *)&client, sizeof(client));
+
                 break;
 
             case 'T':
-                
+            //"Content Deregistration"
+                tpdu.type = 'T';
+                tpdu.data = recievedpdu.data;
+
+                for (int i = 0; i < len(registered_peers); i++) {
+                    if (strcmp(registered_peers[i].ip, "deregister") != 0) {
+                        if (strcmp(registered_peers[i].content_name, tpdu.data) == 0) {
+                            // remove registered_peers[i]
+                            registered_peers[i].ip = "deregister";
+                        }
+                    }  
+                }
+
+                sendto(s, &tpdu, strlen(tpdu.data) + 1, 0, (struct sockaddr *)&client, sizeof(client));
+
                 break;
+
             case 'L':
+            //
                 
                 break;
+
             case 'D':
-                
+            // Download 
+                dpdu.type = 'D';
+                dpdu.data = recievedpdu.data;
+
+                // Look for registered peer with correct content
+                for (int i = 0; i < len(registered_peers); i++) {
+                    if (strcmp(registered_peers[i].ip, "deregister") != 0) {
+                        if (strcmp(registered_peers[i].content_name, dpdu.data) == 0) {
+                            // return ith peer to client
+                            // fix itoa
+                            dpdu.data = itoa(i);
+                            sendto(s, &dpdu, strlen(dpdu.data) + 1, 0, (struct sockaddr *)&client, sizeof(client));
+                        }
+                    }  
+                }
+
                 break;
+
             case 'O':
-            // On-line list of contents
+            // return all registered content
+                opdu.type = 'O';
+                char contents[100];
+                for (int i = 0; i < len(registered_peers); i++){
+                    if (strcmp(registered_peers[i].ip, "deregister") != 0) {
+                        strcat(contents, registered_peers[i].content_name);
+                        strcat(contents, "\n");
+                    }
+                }
 
-                
+                opdu.data = contents;
+                sendto(s, &opdu, strlen(opdu.data) + 1, 0, (struct sockaddr *)&client, sizeof(client));
                 break;
+
             case 'Q':
+            // Deregisters all registered peers and leaves while loop
+                qpdu.type = 'Q';
 
+                for (int i = 0; i < len(registered_peers); i++) {
+                    registered_peers[i].ip = "deregister";
+                }
+
+                sendto(s, &qpdu, strlen(qpdu.data) + 1, 0, (struct sockaddr *)&client, sizeof(client));
                 break;
+
             default:
-                fprintf(stderr, "Invalid PDU type: %s\n", recievedpdu.type);
-    }
+                fprintf(stderr, "Invalid PDU type: %d\n", recievedpdu.type);
+                break;
+        }
 
         
     }
+}
 
-
-
-
-    
-    
-
-
+int len (struct peer reg_peers[]) {
+    return (sizeof(reg_peers)/sizeof(reg_peers[0]));
 }
 
 
