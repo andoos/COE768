@@ -26,6 +26,12 @@ struct pdu {
     char data[100];
 } rpdu, dpdu, spdu, tpdu, opdu, apdu, epdu, cpdu, recievedpdu;
 
+struct peer {
+    char *ip;
+    int port;
+    char *content_name;
+} peer;
+
 
 // For cpdu, the data field is the size of the content. Since the size of the content
 // could be larger than the max size of the TCP packet, the data field must be broken
@@ -40,6 +46,7 @@ int main (int argc, char** argv) {
     struct sockaddr_in server, client;
     char data[101];
     int client_len;
+    struct peer tcp_connections[5]; 
 
 
     switch(argc) {
@@ -87,8 +94,15 @@ int main (int argc, char** argv) {
 
         switch(recievedpdu.type) {
             case 'R':
+            // "Registering Content" - We need to establish TCP connection with peer
+            // in order to add it to the on-line registered content list.
                 
+                // Save name and port
+                peer.ip = client.sin_addr.s_addr;
+                peer.port =  client.sin_port;
+                peer.content_name = recievedpdu.data;
                 break;
+
             case 'T':
                 
                 break;
@@ -99,6 +113,8 @@ int main (int argc, char** argv) {
                 
                 break;
             case 'O':
+            // On-line list of contents
+
                 
                 break;
             case 'Q':
