@@ -6,6 +6,7 @@
 #include <netdb.h>
 #include <stdio.h>
 #include <sys/stat.h>
+#include <arpa/inet.h>
 
 #define SERVER_TCP_PORT 3000
 #define BUFSIZE 100
@@ -28,7 +29,7 @@ struct pdu {
 
 //Peers
 struct peer {
-    char *ip;
+    char* ip;
     int port;
     char *content_name;
 } peer;
@@ -39,7 +40,7 @@ struct peer {
 // up into a series of packets
 
 // Content PDU
-int len (struct peer reg_peers[]);
+char* int_to_string(int x);
 
 int main (int argc, char** argv) {
 
@@ -60,6 +61,7 @@ int main (int argc, char** argv) {
         case 2:
             port = atoi(argv[1]); 
             break;
+
         default:
             fprintf(stderr, "Usage: %s [port]\n", argv[0]);
     }
@@ -68,21 +70,26 @@ int main (int argc, char** argv) {
 
     //Create UDP socket for server
 
-    if (s = socket(AF_INET, SOCK_DGRAM, 0) < 0) {
-        fprintf(stderr, "Can't create socket\n");
-    }
-
     memset(&server, 0, sizeof(server));
     server.sin_family = AF_INET;
     server.sin_addr.s_addr = INADDR_ANY;
     server.sin_port = htons(port);
 
+    s = socket(AF_INET, SOCK_DGRAM, 0);
+    if (s < 0) {
+        fprintf(stderr, "Can't create socket\n");
+    }
+
     //Bind the socket
+    int one = 1;
+    setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
     if (bind(s, (struct sockaddr *)&server, sizeof(server)) < 0)
         fprintf(stderr, "Cant bind to %d port\n", port);
 
+
     listen(s, 5);
     client_len = sizeof(client);
+    
 
     while(1) {
         // Recieve a datagram from a peer - 
@@ -94,6 +101,7 @@ int main (int argc, char** argv) {
         }
 
         // Now we have recievedpdu with properties type and data
+        printf("WE GOT THIS FAR!");
 
         switch(recievedpdu.type) {
             case 'R':
@@ -105,12 +113,15 @@ int main (int argc, char** argv) {
                 rpdu.data = recievedpdu.data;
 
                 //warning: s_addr type mismatch with .ip
-                registered_peers[registered_peer_count].ip = client.sin_addr.s_addr;
+                char *ip_string;
+                inet_ntop(AF_INET, &client.sin_addr.s_addr, ip_string, INET_ADDRSTRLEN);
+
+                registered_peers[registered_peer_count].ip = ip_string;
                 registered_peers[registered_peer_count].port =  client.sin_port;
                 registered_peers[registered_peer_count].content_name = recievedpdu.data;
                 
-                // fix itoa
-                char *port_and_content_name = strcat(itoa(registered_peers[registered_peer_count].port), "\n");
+
+                char *port_and_content_name = strcat(int_to_string(registered_peers[registered_peer_count].port), "\n");
                 port_and_content_name = strcat(port_and_content_name, registered_peers[registered_peer_count].content_name);
                 rpdu.data = port_and_content_name; 
 
@@ -125,7 +136,7 @@ int main (int argc, char** argv) {
                 tpdu.type = 'T';
                 tpdu.data = recievedpdu.data;
 
-                for (int i = 0; i < len(registered_peers); i++) {
+                for (int i = 0; i < registered_peer_count; i++) {
                     if (strcmp(registered_peers[i].ip, "deregister") != 0) {
                         if (strcmp(registered_peers[i].content_name, tpdu.data) == 0) {
                             // remove registered_peers[i]
@@ -149,12 +160,12 @@ int main (int argc, char** argv) {
                 dpdu.data = recievedpdu.data;
 
                 // Look for registered peer with correct content
-                for (int i = 0; i < len(registered_peers); i++) {
+                for (int i = 0; i < registered_peer_count; i++) {
                     if (strcmp(registered_peers[i].ip, "deregister") != 0) {
                         if (strcmp(registered_peers[i].content_name, dpdu.data) == 0) {
                             // return ith peer to client
                             // fix itoa
-                            dpdu.data = itoa(i);
+                            dpdu.data = int_to_string(i);
                             sendto(s, &dpdu, strlen(dpdu.data) + 1, 0, (struct sockaddr *)&client, sizeof(client));
                         }
                     }  
@@ -166,7 +177,7 @@ int main (int argc, char** argv) {
             // return all registered content
                 opdu.type = 'O';
                 char contents[100];
-                for (int i = 0; i < len(registered_peers); i++){
+                for (int i = 0; i < registered_peer_count; i++){
                     if (strcmp(registered_peers[i].ip, "deregister") != 0) {
                         strcat(contents, registered_peers[i].content_name);
                         strcat(contents, "\n");
@@ -181,7 +192,7 @@ int main (int argc, char** argv) {
             // Deregisters all registered peers and leaves while loop
                 qpdu.type = 'Q';
 
-                for (int i = 0; i < len(registered_peers); i++) {
+                for (int i = 0; i < registered_peer_count; i++) {
                     registered_peers[i].ip = "deregister";
                 }
 
@@ -197,9 +208,9 @@ int main (int argc, char** argv) {
     }
 }
 
-int len (struct peer reg_peers[]) {
-    return (sizeof(reg_peers)/sizeof(reg_peers[0]));
+char* int_to_string(int x){
+    int length = snprintf(NULL, 0, "%d", x);
+    char *str = malloc(length + 1);
+    snprintf(str, length + 1, "%d", x);
+    return str;
 }
-
-
-

@@ -6,6 +6,8 @@
 #include <netdb.h>
 #include <stdio.h>
 #include <sys/stat.h>
+#include <arpa/inet.h>
+#include <unistd.h>
 
 #define BUFSIZE 100
 
@@ -19,7 +21,7 @@ int main (int argc, char** argv) {
     int s; //UDP server socket
     int port;
     char *host;
-    char *user_name, *content_name;
+    char user_name[100], content_name[100];
     char command;
     struct sockaddr_in server;
     int server_len;
@@ -61,26 +63,35 @@ int main (int argc, char** argv) {
         fprintf(stderr, "Can't connect ot %s \n", host);
 
 
-    printf("Choose a user name");
-    scanf("%s", user_name);
+    printf("Choose a user name\n");
+    fgets(user_name, sizeof(user_name), stdin);
 
     while(1) {
         printf("Command:\n");
-        scanf("%s", command);
+        scanf("%c", &command);
+        fflush(stdin);
 
         switch(command) {
             case 'R':
-                printf("Enter the content name");
-                scanf("%s", content_name);
-
-                // check if peer has the content
                 
+                printf("Enter the content name\n");
+                fgets(content_name, sizeof(content_name), stdin);
+                
+                // check if peer actually has the content its referencing
+
 
                 pdu.type = 'R';
                 pdu.data = content_name;
-                write(s, &pdu, strlen(pdu.data) + 1);
+
+                //This write is causing the server to crash
+                if (write(s, &pdu, strlen(pdu.data) + 1) < 0) {
+                    fprintf(stderr, "Writing failed.");
+                }     
+
+                printf("HELLO\n");           
+
                 read(s, data, BUFSIZE);
-                print(data);
+                printf("%s", data);
 
                 break;
             case 'T':
@@ -92,7 +103,7 @@ int main (int argc, char** argv) {
             case 'Q':
                 break;
             default:
-                fprintf(stderr, "Invalid command type: %s\n", command);
+                fprintf(stderr, "Invalid command type: %c\n", command);
                 break;
         }
     }
