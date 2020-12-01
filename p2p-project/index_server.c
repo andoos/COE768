@@ -24,15 +24,16 @@
 // Non-content PDUs
 struct pdu {
     char type;
-    char *data;
+    char data[100];
 } rpdu, dpdu, spdu, tpdu, opdu, apdu, epdu, cpdu, recievedpdu, qpdu;
 
 //Peers
 struct peer {
-    char* ip;
+    char name[10];
+    char content_name[10];
+    char ip[10];
     int port;
-    char *content_name;
-} peer;
+} peer, tmp_peer;
 
 
 // For cpdu, the data field is the size of the content. Since the size of the content
@@ -50,7 +51,9 @@ int main (int argc, char** argv) {
     char data[101];
     int client_len;
     struct peer registered_peers[1000]; 
-    int registered_peer_count;
+    int registered_peer_count = 0;
+    const char delim[] = "$"; 
+    char * tmp;
 
 
     switch(argc) {
@@ -90,10 +93,11 @@ int main (int argc, char** argv) {
     listen(s, 5);
     client_len = sizeof(client);
     
-
+    setbuf(stdout, NULL);
     while(1) {
         // Recieve a datagram from a peer - 
-        recvfrom(s, data, BUFSIZE, 0, (struct sockaddr *)&client, &client_len);
+        recvfrom(s, data, sizeof(data), 0, (struct sockaddr *)&client, &client_len);
+        printf("Raw Data: %s\n", data);
         recievedpdu.type = data[0];
 
         for (int i = 0; i < BUFSIZE; i++) {
@@ -101,37 +105,53 @@ int main (int argc, char** argv) {
         }
 
         // Now we have recievedpdu with properties type and data
-        printf("WE GOT THIS FAR!");
 
         switch(recievedpdu.type) {
             case 'R':
-            // "Registering Content" - We need to establish TCP connection with peer
-            // in order to add it to the on-line registered content list.
+            	// "Registering Content"
+            	// When a peer makes a request to register some content, we need to save the name, content name, ip address, and port for download 
+            	// The user can write the first 3 parameters and all that needs to be done is parsing 
+            	// The port number can be decided by the server or specified by the peer
+            	// After all information has been gathered, we will write back a message to the peer with the port number 
+                printf("PDU Type: %c\n", recievedpdu.type);
+                printf("PDU Data: %s\n", recievedpdu.data);
+		
+		// Get name 
+                tmp = strtok(recievedpdu.data, delim); // I used $ as a delimiter on the peer side to split up the name, content and IP
+                strcpy(tmp_peer.name, tmp);
+                printf("name: %s\n", tmp_peer.name);
                 
-                // Save name and port
-                rpdu.type = 'R';
-                rpdu.data = recievedpdu.data;
-
-                //warning: s_addr type mismatch with .ip
-                char *ip_string;
-                inet_ntop(AF_INET, &client.sin_addr.s_addr, ip_string, INET_ADDRSTRLEN);
-
-                registered_peers[registered_peer_count].ip = ip_string;
-                registered_peers[registered_peer_count].port =  client.sin_port;
-                registered_peers[registered_peer_count].content_name = recievedpdu.data;
+                // Get content name 
+                tmp = strtok(NULL, delim);
+                strcpy(tmp_peer.content_name, tmp);
+                printf("content: %s\n", tmp_peer.content_name);
                 
+                // Get IP - This will probably always be localhost 
+                tmp = strtok(NULL, delim);
+                strcpy(tmp_peer.ip, tmp);
+                printf("ip: %s\n", tmp_peer.ip);
+                
+                // Set port number - hard code for now 
+                tmp_peer.port = 8000;
+                
+                // Add peer information to registered peers list 
+                registered_peers[registered_peer_count] = tmp_peer;
 
-                char *port_and_content_name = strcat(int_to_string(registered_peers[registered_peer_count].port), "\n");
-                port_and_content_name = strcat(port_and_content_name, registered_peers[registered_peer_count].content_name);
-                rpdu.data = port_and_content_name; 
-
-                registered_peer_count += 1;
-
+		// Write the content name and port number to the peer 
+		rpdu.type = 'R';
+		strcpy(rpdu.data, tmp_peer.content_name);
+		strcat(rpdu.data, delim);
+		strcat(rpdu.data, int_to_string(tmp_peer.port));
+		strcat(rpdu.data, delim);
+		
                 sendto(s, &rpdu, strlen(rpdu.data) + 1, 0, (struct sockaddr *)&client, sizeof(client));
+		
+		// Increase registered peers count
+                registered_peer_count++;
 
                 break;
 
-            case 'T':
+            /*case 'T':
             //"Content Deregistration"
                 tpdu.type = 'T';
                 tpdu.data = recievedpdu.data;
@@ -197,7 +217,7 @@ int main (int argc, char** argv) {
                 }
 
                 sendto(s, &qpdu, strlen(qpdu.data) + 1, 0, (struct sockaddr *)&client, sizeof(client));
-                break;
+                break;*/
 
             default:
                 fprintf(stderr, "Invalid PDU type: %d\n", recievedpdu.type);
@@ -208,7 +228,7 @@ int main (int argc, char** argv) {
     }
 }
 
-char* int_to_string(int x){
+char* int_to_string(int x) {
     int length = snprintf(NULL, 0, "%d", x);
     char *str = malloc(length + 1);
     snprintf(str, length + 1, "%d", x);

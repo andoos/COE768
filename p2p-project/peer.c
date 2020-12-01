@@ -3,6 +3,7 @@
 #include <netinet/in.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <netdb.h>
 #include <stdio.h>
 #include <sys/stat.h>
@@ -13,8 +14,11 @@
 
 struct pdu {
     char type;
-    char *data;
-} pdu;
+    char data[100];
+} pdu, tmp_pdu;
+
+char* int_to_string(int x);
+void stuffString(char arr[]);
 
 int main (int argc, char** argv) {
 
@@ -27,6 +31,9 @@ int main (int argc, char** argv) {
     int server_len;
     struct hostent *phe;
     char data[101];
+    int n;
+    const char delim[] = "$"; 
+    char * tmp;
 
     switch(argc) {
         case 3:
@@ -69,31 +76,47 @@ int main (int argc, char** argv) {
     while(1) {
         printf("Command:\n");
         scanf("%c", &command);
-        fflush(stdin);
-
+	fflush(stdin);
         switch(command) {
             case 'R':
-                
+                // What we need to do is ask for a peer name and content name 
+                // This information, along with the IP address, is sent to the index server 
+                // The index server writes back a message containing the content name and port, verifying registration
                 printf("Enter the content name\n");
-                fgets(content_name, sizeof(content_name), stdin);
+                n = read(0, content_name, BUFSIZE);
                 
                 // check if peer actually has the content its referencing
 
-
                 pdu.type = 'R';
-                pdu.data = content_name;
+                
+                strtok(user_name, "\n");
+                strcat(user_name, delim);
+                strcpy(pdu.data, user_name);
+                
+                strtok(content_name, "\n");
+                strcat(content_name, delim);
+                strcat(pdu.data, content_name);
+                
+                strcat(pdu.data, int_to_string(server.sin_addr.s_addr)); // This var holds the IP address
+                strcat(pdu.data, delim);
 
-                //This write is causing the server to crash
-                if (write(s, &pdu, strlen(pdu.data) + 1) < 0) {
+                if (write(s, &pdu, sizeof(pdu.data) + 1) < 0) {
                     fprintf(stderr, "Writing failed.");
-                }     
-
-                printf("HELLO\n");           
+                }              
 
                 read(s, data, BUFSIZE);
-                printf("%s", data);
+                
+		tmp_pdu.type = data[0];
+		for (int i = 0; i < BUFSIZE; i++) {
+		    tmp_pdu.data[i] = data[i + 1];
+		}                
+               
+               tmp = strtok(tmp_pdu.data, delim);
+               printf("Content name: %s\n", tmp);
+               tmp = strtok(NULL, delim);
+               printf("Port number: %s\n", tmp);
 
-                break;
+               break;
             case 'T':
                 break;
             case 'D':
@@ -102,12 +125,18 @@ int main (int argc, char** argv) {
                 break;
             case 'Q':
                 break;
+            case '?':
+            	printf("R - Register Content\nT - Deregister Content\n");
             default:
                 fprintf(stderr, "Invalid command type: %c\n", command);
                 break;
         }
     }
+}
 
-
-
+char* int_to_string(int x) {
+    int length = snprintf(NULL, 0, "%d", x);
+    char *str = malloc(length + 1);
+    snprintf(str, length + 1, "%d", x);
+    return str;
 }
