@@ -25,7 +25,7 @@
 struct pdu {
     char type;
     char data[100];
-} request, response, dpdu, spdu, tpdu, opdu, apdu, epdu, cpdu, qpdu;
+} request, response;
 
 //Peers
 struct Content {
@@ -54,7 +54,7 @@ int main (int argc, char** argv) {
     int registered_contents_count = 0;
     const char delim[] = "$"; 
     char * tmp;
-
+    int found = 0;
 
     switch(argc) {
         case 1:
@@ -95,6 +95,9 @@ int main (int argc, char** argv) {
     
     setbuf(stdout, NULL);
     while(1) {
+        memset(request.data, 0, 100);
+        memset(response.data, 0, 100);
+        memset(data, 0, 101);
         // Recieve a datagram from a peer - 
         recvfrom(s, data, sizeof(data), 0, (struct sockaddr *)&client, &client_len);
         printf("Raw Data: %s\n", data);
@@ -172,23 +175,38 @@ int main (int argc, char** argv) {
                 break;
             case 'T':
                 // Content De-Registration
-                tpdu.type = 'T';
-                //tpdu.data = recievedpdu.data;
+                printf("PDU Type: %c\n", request.type);
+                printf("PDU Data: %s\n", request.data);
 
-                /*for (int i = 0; i < registered_peer_count; i++) {
-                    if (strcmp(registered_peers[i].ip, "deregister") != 0) {
-                        if (strcmp(registered_peers[i].content_name, tpdu.data) == 0) {
-                            // remove registered_peers[i]
-                            registered_peers[i].ip = "deregister";
+                for (int i = 0; i < registered_contents_count; i++) {
+                    if (strcmp(registered_contents[i].content_name, "deregister") != 0) {
+                        if (strcmp(registered_contents[i].content_name, request.data) == 0) {
+                            registered_contents[i].name[0] = '\0'; 
+                            strcpy(registered_contents[i].content_name, "deregister");
+                            registered_contents[i].ip[0] = '\0';
+                            registered_contents[i].port = 0;
+                            found = 1;
                         }
                     }  
-                }*/
+                }
 
-                sendto(s, &tpdu, strlen(tpdu.data) + 1, 0, (struct sockaddr *)&client, sizeof(client));
+                if (found == 1)
+                {
+                    found = 0;
+                    response.type = 'A';
+                    strcpy(response.data, "Content was successfully removed.\n");
+                }
+                else {
+                    response.type = 'E';
+                    strcpy(response.data, "Content was not found.\n");
+                }
+
+                sendto(s, &response, strlen(response.data) + 1, 0, (struct sockaddr *)&client, sizeof(client));
+
                 break;
             case 'O':
                 // List of Online Registered Content 
-                memset(response.data, 0, 100);
+                //memset(response.data, 0, 100);
 
                 for (int i = 0; i < registered_contents_count; i++){
                     if (strcmp(registered_contents[i].content_name, "deregister") != 0) {

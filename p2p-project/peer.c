@@ -76,8 +76,9 @@ int main (int argc, char** argv) {
     // Add check for conflicting user name?
 
     while(1) {
-        //request.data[0] = '\0';
-        //response.data[0] = '\0';
+        memset(response.data, 0, 100);
+        memset(request.data, 0, 100);
+        memset(data, 0, 101);
         printf("Command:\n");
         scanf("%c", &command);
 	    fflush(stdin);
@@ -155,11 +156,12 @@ int main (int argc, char** argv) {
                 }                
                
                if (response.type == 'A') {
-                    tmp = strtok(response.data, delim);
-                    printf("Content has been successfully de-registered.");
+                    printf("Content has been successfully de-registered.\n");
+                    printf("%s\n", response.data);
                }
                else {
-                   printf("Registration Unsuccessful.\n");
+                   printf("De-Registration Unsuccessful.\n");
+                   printf("%s\n", response.data);
                }
 
                 break;
@@ -168,9 +170,6 @@ int main (int argc, char** argv) {
                 break;
             case 'O':
                 // List of Online Registered Content 
-                //memset(response.data, 0, 100);
-                //memset(request.data, 0, 100);
-                memset(data, 0, 101);
                 request.type = 'O';
 
                 if (write(s, &request, sizeof(request.data) + 1) < 0) {
@@ -178,7 +177,7 @@ int main (int argc, char** argv) {
                 } 
 
                 read(s, data, BUFSIZE);
-                printf("Raw Data: %s\n", data);
+
                 response.type = data[0];
                 for (int i = 0; i < BUFSIZE; i++) {
                     response.data[i] = data[i + 1];
