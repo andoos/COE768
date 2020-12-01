@@ -166,26 +166,26 @@ int main (int argc, char** argv) {
                         }
                     }  
                 }
-                break;
+                break;*/
             case 'S':
                 // Search for Content and Associated Content Server 
                 break;
             case 'T':
                 // Content De-Registration
                 tpdu.type = 'T';
-                tpdu.data = recievedpdu.data;
+                //tpdu.data = recievedpdu.data;
 
-                for (int i = 0; i < registered_peer_count; i++) {
+                /*for (int i = 0; i < registered_peer_count; i++) {
                     if (strcmp(registered_peers[i].ip, "deregister") != 0) {
                         if (strcmp(registered_peers[i].content_name, tpdu.data) == 0) {
                             // remove registered_peers[i]
                             registered_peers[i].ip = "deregister";
                         }
                     }  
-                }
+                }*/
 
                 sendto(s, &tpdu, strlen(tpdu.data) + 1, 0, (struct sockaddr *)&client, sizeof(client));
-                break;*/
+                break;
             case 'O':
                 // List of Online Registered Content 
                 memset(response.data, 0, 100);
@@ -198,7 +198,7 @@ int main (int argc, char** argv) {
                 }
 
                 response.type = 'A';
-                printf("sending %s", response.data);
+
                 sendto(s, &response, strlen(response.data) + 1, 0, (struct sockaddr *)&client, sizeof(client));
 
                 break;

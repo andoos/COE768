@@ -135,6 +135,33 @@ int main (int argc, char** argv) {
                 break;
             case 'T':
                 // Content De-Registration
+                printf("Enter the content name\n");
+                n = read(0, content_name, BUFSIZE);
+
+                request.type = 'T';
+                
+                strtok(content_name, "\n");
+                strcat(request.data, content_name);
+
+                if (write(s, &request, sizeof(request.data) + 1) < 0) {
+                    fprintf(stderr, "Writing failed.");
+                }              
+
+                read(s, data, BUFSIZE);
+                
+                response.type = data[0];
+                for (int i = 0; i < BUFSIZE; i++) {
+                    response.data[i] = data[i + 1];
+                }                
+               
+               if (response.type == 'A') {
+                    tmp = strtok(response.data, delim);
+                    printf("Content has been successfully de-registered.");
+               }
+               else {
+                   printf("Registration Unsuccessful.\n");
+               }
+
                 break;
             case 'C':
                 // Content Data (download)
