@@ -116,7 +116,7 @@ int main (int argc, char** argv) {
                 printf("PDU Type: %c\n", recievedpdu.type);
                 printf("PDU Data: %s\n", recievedpdu.data);
 		
-		// Get name 
+		        // Get name 
                 tmp = strtok(recievedpdu.data, delim); // I used $ as a delimiter on the peer side to split up the name, content and IP
                 strcpy(tmp_peer.name, tmp);
                 printf("name: %s\n", tmp_peer.name);
@@ -137,16 +137,16 @@ int main (int argc, char** argv) {
                 // Add peer information to registered peers list 
                 registered_peers[registered_peer_count] = tmp_peer;
 
-		// Write the content name and port number to the peer 
-		rpdu.type = 'R';
-		strcpy(rpdu.data, tmp_peer.content_name);
-		strcat(rpdu.data, delim);
-		strcat(rpdu.data, int_to_string(tmp_peer.port));
-		strcat(rpdu.data, delim);
+                // Write the content name and port number to the peer 
+                rpdu.type = 'R';
+                strcpy(rpdu.data, tmp_peer.content_name);
+                strcat(rpdu.data, delim);
+                strcat(rpdu.data, int_to_string(tmp_peer.port));
+                strcat(rpdu.data, delim);
 		
                 sendto(s, &rpdu, strlen(rpdu.data) + 1, 0, (struct sockaddr *)&client, sizeof(client));
 		
-		// Increase registered peers count
+		        // Increase registered peers count
                 registered_peer_count++;
 
                 break;

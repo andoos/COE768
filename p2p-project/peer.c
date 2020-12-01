@@ -15,7 +15,7 @@
 struct pdu {
     char type;
     char data[100];
-} pdu, tmp_pdu;
+} request, tmp_pdu;
 
 char* int_to_string(int x);
 void stuffString(char arr[]);
@@ -74,9 +74,10 @@ int main (int argc, char** argv) {
     fgets(user_name, sizeof(user_name), stdin);
 
     while(1) {
+        command = '\0';
         printf("Command:\n");
         scanf("%c", &command);
-	fflush(stdin);
+	    fflush(stdin);
         switch(command) {
             case 'R':
                 // What we need to do is ask for a peer name and content name 
@@ -87,29 +88,29 @@ int main (int argc, char** argv) {
                 
                 // check if peer actually has the content its referencing
 
-                pdu.type = 'R';
+                request.type = 'R';
                 
                 strtok(user_name, "\n");
                 strcat(user_name, delim);
-                strcpy(pdu.data, user_name);
+                strcpy(request.data, user_name);
                 
                 strtok(content_name, "\n");
                 strcat(content_name, delim);
-                strcat(pdu.data, content_name);
+                strcat(request.data, content_name);
                 
-                strcat(pdu.data, int_to_string(server.sin_addr.s_addr)); // This var holds the IP address
-                strcat(pdu.data, delim);
+                strcat(request.data, int_to_string(server.sin_addr.s_addr)); // This var holds the IP address
+                strcat(request.data, delim);
 
-                if (write(s, &pdu, sizeof(pdu.data) + 1) < 0) {
+                if (write(s, &request, sizeof(request.data) + 1) < 0) {
                     fprintf(stderr, "Writing failed.");
                 }              
 
                 read(s, data, BUFSIZE);
                 
-		tmp_pdu.type = data[0];
-		for (int i = 0; i < BUFSIZE; i++) {
-		    tmp_pdu.data[i] = data[i + 1];
-		}                
+                tmp_pdu.type = data[0];
+                for (int i = 0; i < BUFSIZE; i++) {
+                    tmp_pdu.data[i] = data[i + 1];
+                }                
                
                tmp = strtok(tmp_pdu.data, delim);
                printf("Content name: %s\n", tmp);
