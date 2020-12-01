@@ -25,10 +25,10 @@
 struct pdu {
     char type;
     char data[100];
-} rpdu, dpdu, spdu, tpdu, opdu, apdu, epdu, cpdu, recievedpdu, qpdu;
+} request, response, dpdu, spdu, tpdu, opdu, apdu, epdu, cpdu, qpdu;
 
 //Peers
-struct peer {
+struct Content {
     char name[10];
     char content_name[10];
     char ip[10];
@@ -50,8 +50,8 @@ int main (int argc, char** argv) {
     struct sockaddr_in server, client;
     char data[101];
     int client_len;
-    struct peer registered_peers[1000]; 
-    int registered_peer_count = 0;
+    struct Content registered_contents[1000]; 
+    int registered_contents_count = 0;
     const char delim[] = "$"; 
     char * tmp;
 
@@ -98,26 +98,26 @@ int main (int argc, char** argv) {
         // Recieve a datagram from a peer - 
         recvfrom(s, data, sizeof(data), 0, (struct sockaddr *)&client, &client_len);
         printf("Raw Data: %s\n", data);
-        recievedpdu.type = data[0];
+        request.type = data[0];
 
         for (int i = 0; i < BUFSIZE; i++) {
-            recievedpdu.data[i] = data[i + 1];
+            request.data[i] = data[i + 1];
         }
 
         // Now we have recievedpdu with properties type and data
 
-        switch(recievedpdu.type) {
+        switch(request.type) {
             case 'R':
-            	// "Registering Content"
+            	// Content Registration
             	// When a peer makes a request to register some content, we need to save the name, content name, ip address, and port for download 
             	// The user can write the first 3 parameters and all that needs to be done is parsing 
             	// The port number can be decided by the server or specified by the peer
             	// After all information has been gathered, we will write back a message to the peer with the port number 
-                printf("PDU Type: %c\n", recievedpdu.type);
-                printf("PDU Data: %s\n", recievedpdu.data);
+                printf("PDU Type: %c\n", request.type);
+                printf("PDU Data: %s\n", request.data);
 		
 		        // Get name 
-                tmp = strtok(recievedpdu.data, delim); // I used $ as a delimiter on the peer side to split up the name, content and IP
+                tmp = strtok(request.data, delim); // I used $ as a delimiter on the peer side to split up the name, content and IP
                 strcpy(tmp_peer.name, tmp);
                 printf("name: %s\n", tmp_peer.name);
                 
@@ -135,47 +135,23 @@ int main (int argc, char** argv) {
                 tmp_peer.port = 8000;
                 
                 // Add peer information to registered peers list 
-                registered_peers[registered_peer_count] = tmp_peer;
+                registered_contents[registered_contents_count] = tmp_peer;
 
                 // Write the content name and port number to the peer 
-                rpdu.type = 'R';
-                strcpy(rpdu.data, tmp_peer.content_name);
-                strcat(rpdu.data, delim);
-                strcat(rpdu.data, int_to_string(tmp_peer.port));
-                strcat(rpdu.data, delim);
+                response.type = 'A';
+                strcpy(response.data, tmp_peer.content_name);
+                strcat(response.data, delim);
+                strcat(response.data, int_to_string(tmp_peer.port));
+                strcat(response.data, delim);
 		
-                sendto(s, &rpdu, strlen(rpdu.data) + 1, 0, (struct sockaddr *)&client, sizeof(client));
+                sendto(s, &response, strlen(response.data) + 1, 0, (struct sockaddr *)&client, sizeof(client));
 		
 		        // Increase registered peers count
-                registered_peer_count++;
+                registered_contents_count++;
 
                 break;
-
-            /*case 'T':
-            //"Content Deregistration"
-                tpdu.type = 'T';
-                tpdu.data = recievedpdu.data;
-
-                for (int i = 0; i < registered_peer_count; i++) {
-                    if (strcmp(registered_peers[i].ip, "deregister") != 0) {
-                        if (strcmp(registered_peers[i].content_name, tpdu.data) == 0) {
-                            // remove registered_peers[i]
-                            registered_peers[i].ip = "deregister";
-                        }
-                    }  
-                }
-
-                sendto(s, &tpdu, strlen(tpdu.data) + 1, 0, (struct sockaddr *)&client, sizeof(client));
-
-                break;
-
-            case 'L':
-            //
-                
-                break;
-
-            case 'D':
-            // Download 
+            /*case 'D':
+            // Content Download Request 
                 dpdu.type = 'D';
                 dpdu.data = recievedpdu.data;
 
@@ -190,25 +166,43 @@ int main (int argc, char** argv) {
                         }
                     }  
                 }
-
                 break;
+            case 'S':
+                // Search for Content and Associated Content Server 
+                break;
+            case 'T':
+                // Content De-Registration
+                tpdu.type = 'T';
+                tpdu.data = recievedpdu.data;
 
-            case 'O':
-            // return all registered content
-                opdu.type = 'O';
-                char contents[100];
-                for (int i = 0; i < registered_peer_count; i++){
+                for (int i = 0; i < registered_peer_count; i++) {
                     if (strcmp(registered_peers[i].ip, "deregister") != 0) {
-                        strcat(contents, registered_peers[i].content_name);
-                        strcat(contents, "\n");
+                        if (strcmp(registered_peers[i].content_name, tpdu.data) == 0) {
+                            // remove registered_peers[i]
+                            registered_peers[i].ip = "deregister";
+                        }
+                    }  
+                }
+
+                sendto(s, &tpdu, strlen(tpdu.data) + 1, 0, (struct sockaddr *)&client, sizeof(client));
+                break;*/
+            case 'O':
+                // List of Online Registered Content 
+                memset(response.data, 0, 100);
+
+                for (int i = 0; i < registered_contents_count; i++){
+                    if (strcmp(registered_contents[i].content_name, "deregister") != 0) {
+                        strcat(response.data, registered_contents[i].content_name);
+                        strcat(response.data, "\n");
                     }
                 }
 
-                opdu.data = contents;
-                sendto(s, &opdu, strlen(opdu.data) + 1, 0, (struct sockaddr *)&client, sizeof(client));
-                break;
+                response.type = 'A';
+                printf("sending %s", response.data);
+                sendto(s, &response, strlen(response.data) + 1, 0, (struct sockaddr *)&client, sizeof(client));
 
-            case 'Q':
+                break;
+            /*case 'Q':
             // Deregisters all registered peers and leaves while loop
                 qpdu.type = 'Q';
 
@@ -218,9 +212,8 @@ int main (int argc, char** argv) {
 
                 sendto(s, &qpdu, strlen(qpdu.data) + 1, 0, (struct sockaddr *)&client, sizeof(client));
                 break;*/
-
             default:
-                fprintf(stderr, "Invalid PDU type: %d\n", recievedpdu.type);
+                fprintf(stderr, "Invalid PDU type: %d\n", request.type);
                 break;
         }
 

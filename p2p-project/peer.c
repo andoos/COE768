@@ -15,7 +15,7 @@
 struct pdu {
     char type;
     char data[100];
-} request, tmp_pdu;
+} request, response, tmp_pdu;
 
 char* int_to_string(int x);
 void stuffString(char arr[]);
@@ -25,7 +25,7 @@ int main (int argc, char** argv) {
     int s; //UDP server socket
     int port;
     char *host;
-    char user_name[100], content_name[100];
+    char user_name[10], content_name[10];
     char command;
     struct sockaddr_in server;
     int server_len;
@@ -73,13 +73,17 @@ int main (int argc, char** argv) {
     printf("Choose a user name\n");
     fgets(user_name, sizeof(user_name), stdin);
 
+    // Add check for conflicting user name?
+
     while(1) {
-        command = '\0';
+        //request.data[0] = '\0';
+        //response.data[0] = '\0';
         printf("Command:\n");
         scanf("%c", &command);
 	    fflush(stdin);
         switch(command) {
             case 'R':
+                // Content Registration
                 // What we need to do is ask for a peer name and content name 
                 // This information, along with the IP address, is sent to the index server 
                 // The index server writes back a message containing the content name and port, verifying registration
@@ -107,30 +111,65 @@ int main (int argc, char** argv) {
 
                 read(s, data, BUFSIZE);
                 
-                tmp_pdu.type = data[0];
+                response.type = data[0];
                 for (int i = 0; i < BUFSIZE; i++) {
-                    tmp_pdu.data[i] = data[i + 1];
+                    response.data[i] = data[i + 1];
                 }                
                
-               tmp = strtok(tmp_pdu.data, delim);
-               printf("Content name: %s\n", tmp);
-               tmp = strtok(NULL, delim);
-               printf("Port number: %s\n", tmp);
+               if (response.type == 'A') {
+                    tmp = strtok(response.data, delim);
+                    printf("Content has been successfully registered.\nContent name: %s\n", tmp);
+                    tmp = strtok(NULL, delim);
+                    printf("Port number: %s\n", tmp);
+               }
+               else {
+                   printf("Registration Unsuccessful.\n");
+               }
 
                break;
-            case 'T':
-                break;
             case 'D':
+                // Content Download Request
+                break;
+            case 'S':
+                // Search for Content and Associated Content Server 
+                break;
+            case 'T':
+                // Content De-Registration
+                break;
+            case 'C':
+                // Content Data (download)
                 break;
             case 'O':
-                break;
-            case 'Q':
+                // List of Online Registered Content 
+                //memset(response.data, 0, 100);
+                //memset(request.data, 0, 100);
+                memset(data, 0, 101);
+                request.type = 'O';
+
+                if (write(s, &request, sizeof(request.data) + 1) < 0) {
+                    fprintf(stderr, "Writing failed.");
+                } 
+
+                read(s, data, BUFSIZE);
+                printf("Raw Data: %s\n", data);
+                response.type = data[0];
+                for (int i = 0; i < BUFSIZE; i++) {
+                    response.data[i] = data[i + 1];
+                }  
+
+                if (response.type == 'A') {
+                    printf("Online Content List:\n%s", response.data);
+                }
+                else {
+                     printf("Error processing O command.\n");
+                }
                 break;
             case '?':
-            	printf("R - Register Content\nT - Deregister Content\n");
+            	printf("R - Register Content\nD - Content Download Request\nS - Search for Content and Associated Content Server\nT - Content De-Registration\nO - List of Online Registered Content\n");
+                break;
             default:
                 fprintf(stderr, "Invalid command type: %c\n", command);
-                break;
+                //break;
         }
     }
 }
