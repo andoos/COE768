@@ -163,7 +163,7 @@ int main (int argc, char** argv) {
                 strtok(file_name, "\n");
 
                 memset(path, 0, sizeof(path));
-                strcat(path, "//home//marvin//coe768//project//user1//");
+                strcat(path, "./");
                 strcat(path, file_name);
 
                 if ((fptr = fopen(path, "r")) == NULL) {
