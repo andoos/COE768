@@ -130,9 +130,49 @@ int main (int argc, char** argv) {
                break;
             case 'D':
                 // Content Download Request
+                // The user inputs the name of the content they want to download 
+                // A pdu with type S and data containing the peer name and content name is sent to the index server 
+                // The index server responds with an S type pdu containing the ip and port or Error 
+                // The port and ip are used to establish a tcp connection with the content server 
+                // After connection is established, peer sends a D type PDU with content name to initiate the download 
+                // Content server responds with a C type PDU, or multiple depending on the size
+                // Once all data is sent, the TCP connection is terminated 
+                // A message is sent to the content server to register the peer as the new content server for the downloaded content 
                 break;
             case 'S':
-                // Search for Content and Associated Content Server 
+                // Search for Content and Associated Content Server
+                printf("Enter the content name\n");
+                n = read(0, content_name, BUFSIZE);
+
+                request.type = 'S';
+                
+                strtok(user_name, "\n");
+                strcat(user_name, delim);
+                strcpy(request.data, user_name);
+                
+                strtok(content_name, "\n");
+                strcat(content_name, delim);
+                strcat(request.data, content_name);
+
+                if (write(s, &request, sizeof(request.data) + 1) < 0) {
+                    fprintf(stderr, "Writing failed.");
+                }              
+
+                read(s, data, BUFSIZE);
+                
+                response.type = data[0];
+                for (int i = 0; i < BUFSIZE; i++) {
+                    response.data[i] = data[i + 1];
+                }  
+
+                if (response.type == 'S') {
+                    printf("Content found!\n");
+                    printf("%s\n", response.data);
+                }
+                else {
+                    printf("%s\n", response.data);
+                }
+
                 break;
             case 'T':
                 // Content De-Registration
@@ -155,14 +195,14 @@ int main (int argc, char** argv) {
                     response.data[i] = data[i + 1];
                 }                
                
-               if (response.type == 'A') {
-                    printf("Content has been successfully de-registered.\n");
+                if (response.type == 'A') {
+                        printf("Content has been successfully de-registered.\n");
+                        printf("%s\n", response.data);
+                }
+                else {
+                    printf("De-Registration Unsuccessful.\n");
                     printf("%s\n", response.data);
-               }
-               else {
-                   printf("De-Registration Unsuccessful.\n");
-                   printf("%s\n", response.data);
-               }
+                }
 
                 break;
             case 'C':
@@ -183,7 +223,7 @@ int main (int argc, char** argv) {
                     response.data[i] = data[i + 1];
                 }  
 
-                if (response.type == 'A') {
+                if (response.type == 'O') { 
                     printf("Online Content List:\n%s", response.data);
                 }
                 else {

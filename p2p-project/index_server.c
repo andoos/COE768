@@ -153,13 +153,14 @@ int main (int argc, char** argv) {
                 registered_contents_count++;
 
                 break;
-            /*case 'D':
-            // Content Download Request 
-                dpdu.type = 'D';
-                dpdu.data = recievedpdu.data;
+            case 'D':
+                // Content Download Request 
+                // I think all the index server D type has to do is swap port, name, and content name of the downloaded content 
+                //dpdu.type = 'D';
+                //dpdu.data = recievedpdu.data;
 
                 // Look for registered peer with correct content
-                for (int i = 0; i < registered_peer_count; i++) {
+                /*for (int i = 0; i < registered_peer_count; i++) {
                     if (strcmp(registered_peers[i].ip, "deregister") != 0) {
                         if (strcmp(registered_peers[i].content_name, dpdu.data) == 0) {
                             // return ith peer to client
@@ -168,16 +169,54 @@ int main (int argc, char** argv) {
                             sendto(s, &dpdu, strlen(dpdu.data) + 1, 0, (struct sockaddr *)&client, sizeof(client));
                         }
                     }  
-                }
-                break;*/
+                }*/
+                break;
             case 'S':
                 // Search for Content and Associated Content Server 
-                break;
-            case 'T':
-                // Content De-Registration
                 printf("PDU Type: %c\n", request.type);
                 printf("PDU Data: %s\n", request.data);
 
+                char search_name[10];
+                char search_content[10];
+                
+                // Get peer name 
+                tmp = strtok(request.data, delim);
+                strcpy(search_name, tmp);
+
+                // Get content name 
+                tmp = strtok(NULL, delim);
+                strcpy(search_content, tmp);
+
+                for (int i = 0; i < registered_contents_count; i++){
+                    if (strcmp(registered_contents[i].content_name, search_content) == 0) {
+                        strcat(response.data, "Peer name: ");
+                        strcat(response.data, registered_contents[i].name);
+                        strcat(response.data, "\n");
+                        strcat(response.data, "IP: ");
+                        strcat(response.data, registered_contents[i].ip);
+                        strcat(response.data, "\n");
+                        strcat(response.data, "Port: ");
+                        strcat(response.data, int_to_string(registered_contents[i].port));
+                        strcat(response.data, "\n");
+                        found = 1;
+                        break;
+                    }
+                }
+
+                if (found == 1) {
+                    found = 0;
+                    response.type = 'S';
+                }
+                else {
+                    response.type = 'E';
+                    strcpy(response.data, "Content was not found.\n");
+                }
+
+                sendto(s, &response, strlen(response.data) + 1, 0, (struct sockaddr *)&client, sizeof(client));
+
+                break;
+            case 'T':
+                // Content De-Registration
                 for (int i = 0; i < registered_contents_count; i++) {
                     if (strcmp(registered_contents[i].content_name, "deregister") != 0) {
                         if (strcmp(registered_contents[i].content_name, request.data) == 0) {
@@ -190,11 +229,10 @@ int main (int argc, char** argv) {
                     }  
                 }
 
-                if (found == 1)
-                {
+                if (found == 1) {
                     found = 0;
                     response.type = 'A';
-                    strcpy(response.data, "Content was successfully removed.\n");
+                    strcpy(response.data, "Content was successfully de-registered.\n");
                 }
                 else {
                     response.type = 'E';
@@ -206,8 +244,6 @@ int main (int argc, char** argv) {
                 break;
             case 'O':
                 // List of Online Registered Content 
-                //memset(response.data, 0, 100);
-
                 for (int i = 0; i < registered_contents_count; i++){
                     if (strcmp(registered_contents[i].content_name, "deregister") != 0) {
                         strcat(response.data, registered_contents[i].content_name);
@@ -215,7 +251,7 @@ int main (int argc, char** argv) {
                     }
                 }
 
-                response.type = 'A';
+                response.type = 'O';
 
                 sendto(s, &response, strlen(response.data) + 1, 0, (struct sockaddr *)&client, sizeof(client));
 
