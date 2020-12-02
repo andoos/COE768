@@ -28,12 +28,12 @@ struct pdu {
 } request, response;
 
 //Peers
-struct Content {
+typedef struct Content {
     char name[10];
     char content_name[10];
-    char ip[10];
-    int port;
-} peer, tmp_peer;
+    char ip[16];
+    char port[8];
+} Content;
 
 
 // For cpdu, the data field is the size of the content. Since the size of the content
@@ -42,6 +42,8 @@ struct Content {
 
 // Content PDU
 char* int_to_string(int x);
+char* get_attribute(char* str, int num_bytes, int start);
+void content_peer_to_string(Content tmp_peer);
 
 int main (int argc, char** argv) {
 
@@ -50,7 +52,8 @@ int main (int argc, char** argv) {
     struct sockaddr_in server, client;
     char data[101];
     int client_len;
-    struct Content registered_contents[1000]; 
+    char to_deregister[10];
+    Content registered_contents[100000];
     int registered_contents_count = 0;
     const char delim[] = "$"; 
     char * tmp;
@@ -95,6 +98,7 @@ int main (int argc, char** argv) {
     
     setbuf(stdout, NULL);
     while(1) {
+        Content tmp_peer;
         memset(request.data, 0, 100);
         memset(response.data, 0, 100);
         memset(data, 0, 101);
@@ -119,32 +123,27 @@ int main (int argc, char** argv) {
                 printf("PDU Type: %c\n", request.type);
                 printf("PDU Data: %s\n", request.data);
 		
-		        // Get name 
-                tmp = strtok(request.data, delim); // I used $ as a delimiter on the peer side to split up the name, content and IP
-                strcpy(tmp_peer.name, tmp);
-                printf("name: %s\n", tmp_peer.name);
-                
-                // Get content name 
-                tmp = strtok(NULL, delim);
-                strcpy(tmp_peer.content_name, tmp);
-                printf("content: %s\n", tmp_peer.content_name);
-                
-                // Get IP - This will probably always be localhost 
-                tmp = strtok(NULL, delim);
-                strcpy(tmp_peer.ip, tmp);
-                printf("ip: %s\n", tmp_peer.ip);
-                
-                // Set port number - hard code for now 
-                tmp_peer.port = 8000;
+		        // Get name - first 9 bytes
+                get_attribute(tmp_peer.name, 9, 0);
+
+                // Get IP - next 16 bytes
+                get_attribute(tmp_peer.ip, 16, 9);
+
+                // Get Port number - next 8 bytes
+                get_attribute(tmp_peer.port, 8, 25);
+
+                // Get content name - next 9 bytes
+                get_attribute(tmp_peer.content_name, 9, 33);
+                content_peer_to_string(tmp_peer);
                 
                 // Add peer information to registered peers list 
                 registered_contents[registered_contents_count] = tmp_peer;
 
-                // Write the content name and port number to the peer 
+                // Send an acknowledgement back to the peer.
                 response.type = 'A';
                 strcpy(response.data, tmp_peer.content_name);
                 strcat(response.data, delim);
-                strcat(response.data, int_to_string(tmp_peer.port));
+                strcat(response.data, tmp_peer.port);
                 strcat(response.data, delim);
 		
                 sendto(s, &response, strlen(response.data) + 1, 0, (struct sockaddr *)&client, sizeof(client));
@@ -196,7 +195,7 @@ int main (int argc, char** argv) {
                         strcat(response.data, registered_contents[i].ip);
                         strcat(response.data, "\n");
                         strcat(response.data, "Port: ");
-                        strcat(response.data, int_to_string(registered_contents[i].port));
+                        strcat(response.data, registered_contents[i].port);
                         strcat(response.data, "\n");
                         found = 1;
                         break;
@@ -217,13 +216,18 @@ int main (int argc, char** argv) {
                 break;
             case 'T':
                 // Content De-Registration
+                //get the content string you need to compare with from the request.data
+                memset(to_deregister, 0, sizeof(to_deregister));
+                get_attribute(to_deregister, 9, 33);
+                printf("The to_deregister string is: %s\n", to_deregister);
+
                 for (int i = 0; i < registered_contents_count; i++) {
                     if (strcmp(registered_contents[i].content_name, "deregister") != 0) {
-                        if (strcmp(registered_contents[i].content_name, request.data) == 0) {
+                        if (strcmp(registered_contents[i].content_name, to_deregister) == 0) {
                             registered_contents[i].name[0] = '\0'; 
                             strcpy(registered_contents[i].content_name, "deregister");
                             registered_contents[i].ip[0] = '\0';
-                            registered_contents[i].port = 0;
+                            registered_contents[i].port[0] = '\0';
                             found = 1;
                         }
                     }  
@@ -254,7 +258,6 @@ int main (int argc, char** argv) {
                 response.type = 'O';
 
                 sendto(s, &response, strlen(response.data) + 1, 0, (struct sockaddr *)&client, sizeof(client));
-
                 break;
             /*case 'Q':
             // Deregisters all registered peers and leaves while loop
@@ -280,4 +283,18 @@ char* int_to_string(int x) {
     char *str = malloc(length + 1);
     snprintf(str, length + 1, "%d", x);
     return str;
+}
+
+char* get_attribute(char* str, int num_bytes, int start) {
+    for (int i = 0; i < num_bytes; i++) {
+        str[i] = request.data[start + i];
+    }
+    strtok(str, "$");
+}
+
+void content_peer_to_string(Content tmp_peer) {
+    printf("The content peer's username is: %s\n", tmp_peer.name);
+    printf("The content peer's IP is: %s\n", tmp_peer.ip);
+    printf("The content peer's port number is: %s\n", tmp_peer.port);
+    printf("The content peer's content name: %s\n", tmp_peer.content_name);
 }
