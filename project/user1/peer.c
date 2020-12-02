@@ -34,7 +34,7 @@ int main (int argc, char** argv) {
     int s; //UDP server socket
     int port;
     char *host;
-    char user_name[10], content_name[10], to_deregister[10], old_content_name[10];
+    char user_name[10], content_name[10], to_deregister[10], old_content_name[10], tmp_user_name[10];
     char command;
     struct sockaddr_in server;
     int server_len;
@@ -225,46 +225,49 @@ int main (int argc, char** argv) {
                 
                 print_options();
                 break;
-            // case 'S':
-            //     // Search for Content and Associated Content Server
-            //     printf("Enter the content name\n");
-            //     n = read(0, content_name, BUFSIZE);
+             case 'S':
+                 // Search for Content and Associated Content Server
+                 memset(content_name, 0, sizeof(content_name));
+                 memset(request.data, 0, 100);
+                 printf("Enter the content name\n");
+                 n = read(0, content_name, BUFSIZE);
 
-            //     request.type = 'S';
-            //     printf("%s", request.data);
+                 request.type = 'S';
+                 //printf("%s", request.data);
                 
-            //     // Delim bug - appending more than one delimiter messing up the 
+                 // Delim bug - appending more than one delimiter messing up the 
+                strcpy(tmp_user_name, user_name); // temp fix, will change to use other logic later
+
+                 strtok(tmp_user_name, "\n");
+                 strcat(tmp_user_name, delim);
+                 strcpy(request.data, tmp_user_name);
                 
-            //     strtok(user_name, "\n");
-            //     strcat(user_name, delim);
-            //     strcpy(request.data, user_name);
+                 //printf("The content name is: %s", content_name);
+                 strtok(content_name, "\n");
+                 strcat(content_name, delim);
+                 strcat(request.data, content_name);
+
+                 if (write(s, &request, sizeof(request.data) + 1) < 0) {
+                     fprintf(stderr, "Writing failed.");
+                 }              
+
+                 read(s, data, BUFSIZE);
                 
-            //     printf("The content name is: %s", content_name);
-            //     strtok(content_name, "\n");
-            //     strcat(content_name, delim);
-            //     strcat(request.data, content_name);
+                 response.type = data[0];
+                 for (int i = 0; i < BUFSIZE; i++) {
+                     response.data[i] = data[i + 1];
+                 }  
 
-            //     if (write(s, &request, sizeof(request.data) + 1) < 0) {
-            //         fprintf(stderr, "Writing failed.");
-            //     }              
+                 if (response.type == 'S') {
+                     printf("Content found!\n");
+                     printf("%s\n", response.data);
+                 }
+                 else {
+                    printf("%s\n", response.data);
+                 }
 
-            //     read(s, data, BUFSIZE);
-                
-            //     response.type = data[0];
-            //     for (int i = 0; i < BUFSIZE; i++) {
-            //         response.data[i] = data[i + 1];
-            //     }  
-
-            //     if (response.type == 'S') {
-            //         printf("Content found!\n");
-            //         printf("%s\n", response.data);
-            //     }
-            //     else {
-            //         printf("%s\n", response.data);
-            //     }
-
-            //     print_options();
-            //     break;
+                 print_options();
+                 break;
             case 'T':
                 // Content De-Registration
                 printf("Enter the content name\n");
@@ -314,9 +317,6 @@ int main (int argc, char** argv) {
                 }
 
                 print_options();
-                break;
-            case 'C':
-                // Content Data (download)
                 break;
             case 'O':
                 // List of Online Registered Content 
@@ -387,7 +387,7 @@ char* int_to_string(int x) {
 }
 
 void print_options() {
-    printf("\nR - Register Content\nT - Content De-Registration\nO - List of Online Registered Content\nL - List of Locally Registered Content\nD - Content Download Request\nQ - Quit\n");
+    printf("\nR - Register Content\nT - Content De-Registration\nO - List of Online Registered Content\nL - List of Locally Registered Content\nS - Search for Content and Associated Content Server\nD - Content Download Request\nQ - Quit\n");
 }
 
 void pad_string(char str[], int padding_amount) {

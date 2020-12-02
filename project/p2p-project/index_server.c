@@ -190,50 +190,50 @@ int main (int argc, char** argv) {
                     }  
                 }*/
                 break;
-            // case 'S':
-            //     // Search for Content and Associated Content Server 
-            //     printf("PDU Type: %c\n", request.type);
-            //     printf("PDU Data: %s\n", request.data);
+             case 'S':
+                 // Search for Content and Associated Content Server 
+                 printf("PDU Type: %c\n", request.type);
+                 printf("PDU Data: %s\n", request.data);
 
-            //     char search_name[10];
-            //     char search_content[10];
+                 char search_name[10];
+                 char search_content[10];
                 
-            //     // Get peer name 
-            //     tmp = strtok(request.data, delim);
-            //     strcpy(search_name, tmp);
+                 // Get peer name 
+                 tmp = strtok(request.data, delim);
+                 strcpy(search_name, tmp);
 
-            //     // Get content name 
-            //     tmp = strtok(NULL, delim);
-            //     strcpy(search_content, tmp);
+                 // Get content name 
+                 tmp = strtok(NULL, delim);
+                 strcpy(search_content, tmp);
 
-            //     for (int i = 0; i < registered_contents_count; i++){
-            //         if (strcmp(registered_contents[i].content_name, search_content) == 0) {
-            //             strcat(response.data, "Peer name: ");
-            //             strcat(response.data, registered_contents[i].name);
-            //             strcat(response.data, "\n");
-            //             strcat(response.data, "IP: ");
-            //             strcat(response.data, registered_contents[i].ip);
-            //             strcat(response.data, "\n");
-            //             strcat(response.data, "Port: ");
-            //             strcat(response.data, registered_contents[i].port);
-            //             strcat(response.data, "\n");
-            //             found = 1;
-            //             break;
-            //         }
-            //     }
+                 for (int i = 0; i < registered_contents_count; i++){
+                     if (strcmp(registered_contents[i].content_name, search_content) == 0) {
+                         strcat(response.data, "Peer name: ");
+                         strcat(response.data, registered_contents[i].name);
+                         strcat(response.data, "\n");
+                         strcat(response.data, "IP: ");
+                         strcat(response.data, registered_contents[i].ip);
+                         strcat(response.data, "\n");
+                         strcat(response.data, "Port: ");
+                         strcat(response.data, registered_contents[i].port);
+                         strcat(response.data, "\n");
+                         found = 1;
+                         break;
+                     }
+                 }
 
-            //     if (found == 1) {
-            //         found = 0;
-            //         response.type = 'S';
-            //     }
-            //     else {
-            //         response.type = 'E';
-            //         strcpy(response.data, "Content was not found.\n");
-            //     }
+                 if (found == 1) {
+                     found = 0;
+                     response.type = 'S';
+                 }
+                 else {
+                     response.type = 'E';
+                     strcpy(response.data, "Content was not found.\n");
+                 }
 
-            //     sendto(s, &response, strlen(response.data) + 1, 0, (struct sockaddr *)&client, sizeof(client));
+                 sendto(s, &response, strlen(response.data) + 1, 0, (struct sockaddr *)&client, sizeof(client));
 
-            //     break;
+                 break;
             case 'T':
                 // Content De-Registration
                 //get the content string you need to compare with from the request.data
