@@ -44,6 +44,7 @@ typedef struct Content {
 char* int_to_string(int x);
 char* get_attribute(char* str, int num_bytes, int start);
 void content_peer_to_string(Content tmp_peer);
+int content_equals(Content c1, Content c2);
 
 int main (int argc, char** argv) {
 
@@ -58,6 +59,8 @@ int main (int argc, char** argv) {
     const char delim[] = "$"; 
     char * tmp;
     int found = 0;
+    int duplicate_check = 0;
+    int found_duplicate = 0;
 
     switch(argc) {
         case 1:
@@ -135,7 +138,24 @@ int main (int argc, char** argv) {
                 // Get content name - next 9 bytes
                 get_attribute(tmp_peer.content_name, 9, 33);
                 content_peer_to_string(tmp_peer);
-                
+
+                // Check duplicates
+                found_duplicate = 0;
+                for (int i = 0; i < registered_contents_count; i ++) {
+                    duplicate_check = content_equals(registered_contents[i], tmp_peer);
+                    if (duplicate_check == 1) {
+                        found_duplicate = 1;
+                        break;
+                    }
+                }
+
+                if (found_duplicate == 1) {
+                    response.type = 'E';
+                    sendto(s, &response, strlen(response.data) + 1, 0, (struct sockaddr *)&client, sizeof(client));
+                    break;
+                }
+
+
                 // Add peer information to registered peers list 
                 registered_contents[registered_contents_count] = tmp_peer;
 
@@ -170,50 +190,50 @@ int main (int argc, char** argv) {
                     }  
                 }*/
                 break;
-            case 'S':
-                // Search for Content and Associated Content Server 
-                printf("PDU Type: %c\n", request.type);
-                printf("PDU Data: %s\n", request.data);
+            // case 'S':
+            //     // Search for Content and Associated Content Server 
+            //     printf("PDU Type: %c\n", request.type);
+            //     printf("PDU Data: %s\n", request.data);
 
-                char search_name[10];
-                char search_content[10];
+            //     char search_name[10];
+            //     char search_content[10];
                 
-                // Get peer name 
-                tmp = strtok(request.data, delim);
-                strcpy(search_name, tmp);
+            //     // Get peer name 
+            //     tmp = strtok(request.data, delim);
+            //     strcpy(search_name, tmp);
 
-                // Get content name 
-                tmp = strtok(NULL, delim);
-                strcpy(search_content, tmp);
+            //     // Get content name 
+            //     tmp = strtok(NULL, delim);
+            //     strcpy(search_content, tmp);
 
-                for (int i = 0; i < registered_contents_count; i++){
-                    if (strcmp(registered_contents[i].content_name, search_content) == 0) {
-                        strcat(response.data, "Peer name: ");
-                        strcat(response.data, registered_contents[i].name);
-                        strcat(response.data, "\n");
-                        strcat(response.data, "IP: ");
-                        strcat(response.data, registered_contents[i].ip);
-                        strcat(response.data, "\n");
-                        strcat(response.data, "Port: ");
-                        strcat(response.data, registered_contents[i].port);
-                        strcat(response.data, "\n");
-                        found = 1;
-                        break;
-                    }
-                }
+            //     for (int i = 0; i < registered_contents_count; i++){
+            //         if (strcmp(registered_contents[i].content_name, search_content) == 0) {
+            //             strcat(response.data, "Peer name: ");
+            //             strcat(response.data, registered_contents[i].name);
+            //             strcat(response.data, "\n");
+            //             strcat(response.data, "IP: ");
+            //             strcat(response.data, registered_contents[i].ip);
+            //             strcat(response.data, "\n");
+            //             strcat(response.data, "Port: ");
+            //             strcat(response.data, registered_contents[i].port);
+            //             strcat(response.data, "\n");
+            //             found = 1;
+            //             break;
+            //         }
+            //     }
 
-                if (found == 1) {
-                    found = 0;
-                    response.type = 'S';
-                }
-                else {
-                    response.type = 'E';
-                    strcpy(response.data, "Content was not found.\n");
-                }
+            //     if (found == 1) {
+            //         found = 0;
+            //         response.type = 'S';
+            //     }
+            //     else {
+            //         response.type = 'E';
+            //         strcpy(response.data, "Content was not found.\n");
+            //     }
 
-                sendto(s, &response, strlen(response.data) + 1, 0, (struct sockaddr *)&client, sizeof(client));
+            //     sendto(s, &response, strlen(response.data) + 1, 0, (struct sockaddr *)&client, sizeof(client));
 
-                break;
+            //     break;
             case 'T':
                 // Content De-Registration
                 //get the content string you need to compare with from the request.data
@@ -259,18 +279,18 @@ int main (int argc, char** argv) {
 
                 sendto(s, &response, strlen(response.data) + 1, 0, (struct sockaddr *)&client, sizeof(client));
                 break;
-            /*case 'Q':
-            // Deregisters all registered peers and leaves while loop
-                qpdu.type = 'Q';
+            case 'Q':
+                // Not going to reset online content on individual peer quit
+                // memset(registered_contents, 0, sizeof(registered_contents));
+                // registered_contents_count = 0;
 
-                for (int i = 0; i < registered_peer_count; i++) {
-                    registered_peers[i].ip = "deregister";
-                }
+                response.type = 'Q';
+                strcpy(response.data, "Quitting...");
+                sendto(s, &response, strlen(response.data) + 1, 0, (struct sockaddr *)&client, sizeof(client));
+                break;
 
-                sendto(s, &qpdu, strlen(qpdu.data) + 1, 0, (struct sockaddr *)&client, sizeof(client));
-                break;*/
             default:
-                fprintf(stderr, "Invalid PDU type: %d\n", request.type);
+                fprintf(stderr, "Invalid PDU type: %c\n", request.type);
                 break;
         }
 
@@ -297,4 +317,12 @@ void content_peer_to_string(Content tmp_peer) {
     printf("The content peer's IP is: %s\n", tmp_peer.ip);
     printf("The content peer's port number is: %s\n", tmp_peer.port);
     printf("The content peer's content name: %s\n", tmp_peer.content_name);
+}
+
+int content_equals(Content c1, Content c2) {
+    if ((strcmp(c1.ip, c2.ip) && strcmp(c1.name, c2.name) && strcmp(c1.port, c2.port)) == 0) {
+        return 1;
+    } else {
+        return 0;
+    }
 }

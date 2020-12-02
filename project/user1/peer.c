@@ -34,7 +34,7 @@ int main (int argc, char** argv) {
     int s; //UDP server socket
     int port;
     char *host;
-    char user_name[10], content_name[10], to_deregister[10];
+    char user_name[10], content_name[10], to_deregister[10], old_content_name[10];
     char command;
     struct sockaddr_in server;
     int server_len;
@@ -44,6 +44,13 @@ int main (int argc, char** argv) {
     const char delim[] = "$"; 
     char * tmp;
     FILE *fptr;
+    char file_name[20];
+    char path[100];
+    char local_string[10];
+    // Each peer can at most register 100 contents
+    char local_registers[100][10];
+    int local_register_count = 0;
+    int found_local;
 
     switch(argc) {
         case 3:
@@ -82,11 +89,11 @@ int main (int argc, char** argv) {
 
     printf("Choose a user name\n");
     fgets(user_name, sizeof(user_name), stdin);
-
-    // Add check for conflicting user name?
     print_options();
 
+    // Add check for conflicting user name?
     while(1) {
+        
         command = getchar();
         printf("\n");
 
@@ -129,9 +136,48 @@ int main (int argc, char** argv) {
                 printf("Enter the content name\n");
                 n = read(0, content_name, BUFSIZE);
 
-                // Check if the content name is in the current directory
+                // Check if the content is in the local registers list already
+                found_local = 0;
+                for (int i = 0; i < local_register_count; i++) {
+                    memset(local_string, 0, sizeof(local_string));
+                    for (int j = 0; j < 10; j++) {
+                        local_string[j] = local_registers[i][j];
+                        if (j == 9) {
+                            if (strcmp(local_string, content_name) == 0) {
+                                found_local = 1;
+                                break;
+                            }
+                        }
+                    }
+                }
 
+                if (found_local == 1) {
+                    printf("The content has already been registered by this peer.\n");
+                    print_options();
+                    break;
+                }
+                //Check if the content name is in the directory
+                
+                memset(file_name, 0, sizeof(file_name));
+                strcpy(file_name, content_name);
+                strtok(file_name, "\n");
+
+                memset(path, 0, sizeof(path));
+                strcat(path, "//home//marvin//coe768//project//user1//");
+                strcat(path, file_name);
+
+                if ((fptr = fopen(path, "r")) == NULL) {
+                    printf("No file matching the given content.\n");
+                    print_options();
+                    break;
+                } else {
+                    printf("Successfully found the file!\n");
+                    fclose(fptr);
+                }
+
+                strcpy(old_content_name, content_name);
                 // Content
+
                 int content_padding = 10 - n;
                 pad_string(content_name, content_padding);
                 strcat(request.data, content_name);
@@ -153,13 +199,19 @@ int main (int argc, char** argv) {
                     printf("Content has been successfully registered.\nContent name: %s\n", tmp);
                     tmp = strtok(NULL, delim);
                     printf("Port number: %s\n", tmp);
+
+                    // Add content to local contents list
+                    for (int i = 0; i < sizeof(old_content_name); i++){
+                        local_registers[local_register_count][i] = old_content_name[i];
+                    }
+                    local_register_count++;
                 }
                 else {
                     printf("Registration Unsuccessful.\n");
                 }
-
                 print_options();
                 break;
+
             case 'D':
                 // Content Download Request
                 // The user inputs the name of the content they want to download 
@@ -170,53 +222,74 @@ int main (int argc, char** argv) {
                 // Content server responds with a C type PDU, or multiple depending on the size
                 // Once all data is sent, the TCP connection is terminated 
                 // A message is sent to the content server to register the peer as the new content server for the downloaded content 
+                
                 print_options();
                 break;
-            case 'S':
-                // Search for Content and Associated Content Server
-                printf("Enter the content name\n");
-                n = read(0, content_name, BUFSIZE);
+            // case 'S':
+            //     // Search for Content and Associated Content Server
+            //     printf("Enter the content name\n");
+            //     n = read(0, content_name, BUFSIZE);
 
-                request.type = 'S';
-                printf("%s", request.data);
+            //     request.type = 'S';
+            //     printf("%s", request.data);
                 
-                // Delim bug - appending more than one delimiter messing up the 
+            //     // Delim bug - appending more than one delimiter messing up the 
                 
-                strtok(user_name, "\n");
-                strcat(user_name, delim);
-                strcpy(request.data, user_name);
+            //     strtok(user_name, "\n");
+            //     strcat(user_name, delim);
+            //     strcpy(request.data, user_name);
                 
-                printf("The content name is: %s", content_name);
-                strtok(content_name, "\n");
-                strcat(content_name, delim);
-                strcat(request.data, content_name);
+            //     printf("The content name is: %s", content_name);
+            //     strtok(content_name, "\n");
+            //     strcat(content_name, delim);
+            //     strcat(request.data, content_name);
 
-                if (write(s, &request, sizeof(request.data) + 1) < 0) {
-                    fprintf(stderr, "Writing failed.");
-                }              
+            //     if (write(s, &request, sizeof(request.data) + 1) < 0) {
+            //         fprintf(stderr, "Writing failed.");
+            //     }              
 
-                read(s, data, BUFSIZE);
+            //     read(s, data, BUFSIZE);
                 
-                response.type = data[0];
-                for (int i = 0; i < BUFSIZE; i++) {
-                    response.data[i] = data[i + 1];
-                }  
+            //     response.type = data[0];
+            //     for (int i = 0; i < BUFSIZE; i++) {
+            //         response.data[i] = data[i + 1];
+            //     }  
 
-                if (response.type == 'S') {
-                    printf("Content found!\n");
-                    printf("%s\n", response.data);
-                }
-                else {
-                    printf("%s\n", response.data);
-                }
+            //     if (response.type == 'S') {
+            //         printf("Content found!\n");
+            //         printf("%s\n", response.data);
+            //     }
+            //     else {
+            //         printf("%s\n", response.data);
+            //     }
 
-                print_options();
-                break;
+            //     print_options();
+            //     break;
             case 'T':
                 // Content De-Registration
                 printf("Enter the content name\n");
                 n = read(0, to_deregister, BUFSIZE);
 
+                // Deregister from local
+                
+                found_local = 0;
+                for (int i = 0; i < local_register_count; i++) {
+                    memset(local_string, 0, sizeof(local_string));
+                    for (int j = 0; j < 10; j++) {
+                        local_string[j] = local_registers[i][j];
+                        if (j == 9) {
+                            if (strcmp(local_string, to_deregister) == 0) {
+                                // found match
+                                for (int k = 0; k < 9; k ++) {
+                                    local_registers[i][k] = '\0';
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // Deregister from online
                 request.type = 'T';
                 
                 strtok(to_deregister, "\n");
@@ -234,11 +307,9 @@ int main (int argc, char** argv) {
                 }                
                
                 if (response.type == 'A') {
-                        printf("Content has been successfully de-registered.\n");
-                        printf("%s\n", response.data);
+                    printf("%s\n", response.data);
                 }
                 else {
-                    printf("De-Registration Unsuccessful.\n");
                     printf("%s\n", response.data);
                 }
 
@@ -246,7 +317,6 @@ int main (int argc, char** argv) {
                 break;
             case 'C':
                 // Content Data (download)
-                print_options();
                 break;
             case 'O':
                 // List of Online Registered Content 
@@ -269,11 +339,42 @@ int main (int argc, char** argv) {
                 else {
                      printf("Error processing O command.\n");
                 }
+
                 print_options();
                 break;
+            case 'L':
+                // Print all the locally registered content
+                printf("Locally Registered Content:\n");
+                for (int i = 0; i < local_register_count; i++) {
+                    for (int j = 0; j < 10; j++) {
+                        printf("%c", local_registers[i][j]);
+                        if (j == 9 && local_registers[i][0] != '\0') {
+                            printf("\n");
+                        }
+                    }
+                }
+
+                print_options();
+                break;
+            case 'Q':
+                request.type = 'Q';
+                
+                if (write(s, &request, sizeof(request.data) + 1) < 0) {
+                    fprintf(stderr, "Writing failed.");
+                }
+
+                read(s, data, BUFSIZE);
+
+                response.type = data[0];
+                for (int i = 0; i < BUFSIZE; i++) {
+                    response.data[i] = data[i + 1];
+                }
+
+                printf("%s\n", response.data);
+                exit(0);
+
             // default:
-            //     fprintf(stderr, "Invalid command type: %c\n", command);
-                //break;
+            //     print_options();
         }
     }
 }
@@ -286,7 +387,7 @@ char* int_to_string(int x) {
 }
 
 void print_options() {
-    printf("\nR - Register Content\nD - Content Download Request\nS - Search for Content and Associated Content Server\nT - Content De-Registration\nO - List of Online Registered Content\n");
+    printf("\nR - Register Content\nT - Content De-Registration\nO - List of Online Registered Content\nL - List of Locally Registered Content\nD - Content Download Request\nQ - Quit\n");
 }
 
 void pad_string(char str[], int padding_amount) {
