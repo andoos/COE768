@@ -43,6 +43,7 @@ int main (int argc, char** argv) {
     int n;
     const char delim[] = "$"; 
     char * tmp;
+    FILE *fptr;
 
     switch(argc) {
         case 3:
@@ -127,6 +128,8 @@ int main (int argc, char** argv) {
                 memset(content_name, 0, sizeof(content_name));
                 printf("Enter the content name\n");
                 n = read(0, content_name, BUFSIZE);
+
+                // Check if the content name is in the current directory
 
                 // Content
                 int content_padding = 10 - n;
