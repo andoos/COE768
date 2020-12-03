@@ -28,6 +28,7 @@ char* int_to_string(int x);
 void stuffString(char arr[]);
 void print_options();
 void pad_string(char str[], int padding_amount);
+int random_number_in_range (int lower, int upper) ;
 
 int main (int argc, char** argv) {
 
@@ -117,6 +118,7 @@ int main (int argc, char** argv) {
         strcat(request.data, ip);
 
         //Port String, next 8 bytes - **port cannot be larger than 7 digits
+        port = random_number_in_range(5000, 50000);
         char* port_str = int_to_string(port);
         int port_padding = 8 - strlen(port_str);
         pad_string(port_str, port_padding);
@@ -387,7 +389,7 @@ char* int_to_string(int x) {
 }
 
 void print_options() {
-    printf("\nR - Register Content\nT - Content De-Registration\nO - List of Online Registered Content\nL - List of Locally Registered Content\nS - Search for Content and Associated Content Server\nD - Content Download Request\nQ - Quit\n");
+    printf("\nR - Register Content\nT - Content De-Registration\nO - List of Online Registered Content\nL - List of Locally Registered Content\nD - Content Download Request\nQ - Quit\n");
 }
 
 void pad_string(char str[], int padding_amount) {
@@ -395,4 +397,8 @@ void pad_string(char str[], int padding_amount) {
     for (int i = 0; i < padding_amount; i++) {
         strcat(str, "$");
     }
+}
+
+int random_number_in_range (int lower, int upper) {
+    return (rand() % (upper - lower + 1)) + lower;
 }
