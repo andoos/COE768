@@ -16,7 +16,12 @@
 struct pdu {
     char type;
     char data[100];
-} request, response, tmp_pdu, sendData;
+} request, response, tmp_pdu;
+
+typedef struct content_pdu {
+    char type;
+    char data[100];
+} content_pdu;
 
 struct Content {
     char name[10];
@@ -30,17 +35,20 @@ void stuffString(char arr[]);
 void print_options();
 void pad_string(char str[], int padding_amount);
 int random_number_in_range (int lower, int upper) ;
+int read_file(int sd, char file_name[]);
 
 int main (int argc, char** argv) {
 
     int s; //UDP server socket
     int port;
     char *host;
-    char user_name[10], content_name[10], to_deregister[10], old_content_name[10], tmp_user_name[10], to_download[10];
+    char user_name[10], content_name[10], to_deregister[10], old_content_name[10], tmp_user_name[10], to_download[10], save_to_download[10];
     char command;
     struct sockaddr_in server;
     int server_len;
     struct hostent *phe;
+    content_pdu sendData;
+    content_pdu recievedData;
     char data[101];
     int n;
     const char delim[] = "$"; 
@@ -55,6 +63,7 @@ int main (int argc, char** argv) {
     int found_local;
     pid_t pid;
     int sd;
+    char content_server_data[101];
 
     switch(argc) {
         case 3:
@@ -250,10 +259,25 @@ int main (int argc, char** argv) {
                             printf("can't accept client\n");
                         }
 
-                        char contentData[10];
+                        char contentData[101];
                         memset(contentData, '\0', sizeof(contentData));
                         read(clientSocket, contentData, sizeof(contentData));
                         printf("Got: %s\n", contentData);
+
+                        recievedData.type = contentData[0];
+                        for (int i = 0; i < BUFSIZE; i++) {
+                            recievedData.data[i] = contentData[i + 1];
+                        }
+
+                        // now we have file name
+                        char to_open_file_path[20];
+                        strcpy(to_open_file_path, "./");
+                        strcat(to_open_file_path, recievedData.data);
+                        printf("The file path is: %s\n", to_open_file_path);
+
+                        read_file(clientSocket, to_open_file_path);
+
+                        
                     }
                 }
 
@@ -272,8 +296,10 @@ int main (int argc, char** argv) {
                 // A message is sent to the content server to register the peer as the new content server for the downloaded content 
                 
                 memset(to_download, 0, sizeof(to_download));
+                memset(save_to_download, 0, sizeof(save_to_download));
                 printf("What content would you like to download?\n");
                 n = read(0, to_download, sizeof(to_download));
+                strcpy(save_to_download, to_download);
 
                 //Check if the content is in the local registers list already
                 found_local = 0;
@@ -343,12 +369,34 @@ int main (int argc, char** argv) {
                     }
 
                     // After connection is established, peer sends a D type PDU with content name to initiate the download 
-                    memset(sendData.data, '\0', sizeof(sendData.data));
+                    memset(&sendData, 0, sizeof(sendData));
                     sendData.type = 'D';
-                    strtok(to_download, "\n");
-                    strcpy(sendData.data, to_download);
+                    strcpy(sendData.data, save_to_download);
                     printf("Sent: %s\n", sendData.data);
                     write(fileClientSocket, &sendData, sizeof(sendData.data) + 1);
+
+                    char buf[1];
+                    memset(buf, 0, sizeof(buf));
+                    read(fileClientSocket, buf, sizeof(buf));
+
+                    if (strcmp(buf, "0") == 0) {
+                        printf("File not open succesfully\n");
+                    } else {
+                        printf("File open successfully\n");
+                        FILE *fp;
+                        
+                        strtok(sendData.data, "\n");
+                        fp = fopen(sendData.data, "w");
+                        
+                        char file_line[BUFSIZE];
+
+                        while (read(fileClientSocket, file_line, sizeof(file_line))) {
+                            //printf("file_line: %s\n", file_line);
+                            printf("%d\n", fputs(file_line, fp));
+                        }
+                    }
+
+                    close (fileClientSocket);
 
                 } else {
                     printf("%s\n", response.data);
@@ -531,4 +579,27 @@ void pad_string(char str[], int padding_amount) {
 
 int random_number_in_range (int lower, int upper) {
     return (rand() % (upper - lower + 1)) + lower;
+}
+
+int read_file(int sd, char file_name[]) {
+    char buf[BUFSIZE];
+    FILE *fp;
+    strtok(file_name, "\n");
+    fp = fopen(file_name, "r");
+    content_pdu file_io;
+
+    if (fp == NULL) {
+        write(sd, "0", 1);
+    } else {
+        printf("File is there!\n");
+        write(sd, "1", 1);
+        while (fgets(buf, BUFSIZE, fp) != NULL) {
+            printf("Buf: %s\n", buf);
+            write(sd, buf, BUFSIZE);
+        }
+    }
+
+    fclose(fp);
+    close(sd);
+
 }
