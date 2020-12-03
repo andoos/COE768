@@ -149,12 +149,12 @@ int main (int argc, char** argv) {
                     }
                 }
 
-                if (found_duplicate == 1) {
-                    response.type = 'E';
-                    sendto(s, &response, strlen(response.data) + 1, 0, (struct sockaddr *)&client, sizeof(client));
-                    break;
-                }
-
+                // if (found_duplicate == 1) {
+                //     found_duplicate = 0;
+                //     response.type = 'E';
+                //     sendto(s, &response, strlen(response.data) + 1, 0, (struct sockaddr *)&client, sizeof(client));
+                //     break;
+                // }
 
                 // Add peer information to registered peers list 
                 registered_contents[registered_contents_count] = tmp_peer;
@@ -190,7 +190,7 @@ int main (int argc, char** argv) {
                     }  
                 }*/
                 break;
-             case 'S':
+            case 'S':
                  // Search for Content and Associated Content Server 
                  printf("PDU Type: %c\n", request.type);
                  printf("PDU Data: %s\n", request.data);
@@ -200,13 +200,17 @@ int main (int argc, char** argv) {
                  get_attribute(search_content, sizeof(search_content), 33);
                  printf("The search content is: %s\n", search_content);
 
+                int max_i = 0;
                  for (int i = 0; i < registered_contents_count; i++){
                      if (strcmp(registered_contents[i].content_name, search_content) == 0) {
-                         strcat(response.data, registered_contents[i].port);
-                         found = 1;
-                         break;
+                        if (i > max_i) {
+                            max_i = i;
+                        } 
                      }
                  }
+
+                strcat(response.data, registered_contents[max_i].port);
+                found = 1;
 
                  if (found == 1) {
                      found = 0;

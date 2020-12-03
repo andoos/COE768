@@ -10,6 +10,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <errno.h>
+#include <time.h>
 
 #define BUFSIZE 100
 
@@ -43,6 +44,7 @@ int main (int argc, char** argv) {
     int port;
     char *host;
     char user_name[10], content_name[10], to_deregister[10], old_content_name[10], tmp_user_name[10], to_download[10], save_to_download[10];
+    char save_sendData_data[10];
     char command;
     struct sockaddr_in server;
     int server_len;
@@ -276,8 +278,7 @@ int main (int argc, char** argv) {
                         printf("The file path is: %s\n", to_open_file_path);
 
                         read_file(clientSocket, to_open_file_path);
-
-                        
+                        break;
                     }
                 }
 
@@ -384,6 +385,8 @@ int main (int argc, char** argv) {
                     } else {
                         printf("File open successfully\n");
                         FILE *fp;
+
+                        strcpy(save_sendData_data, sendData.data);
                         
                         strtok(sendData.data, "\n");
                         fp = fopen(sendData.data, "w");
@@ -391,12 +394,107 @@ int main (int argc, char** argv) {
                         char file_line[BUFSIZE];
 
                         while (read(fileClientSocket, file_line, sizeof(file_line))) {
-                            printf("file_line: %s\n", file_line);
                             fseek(fp, 0, SEEK_CUR);
-                            printf("%d\n", fputs(file_line, fp));
+                            fputs(file_line, fp);
+                        }
+
+                        close(fileClientSocket);
+
+                        //register the new content to this peer
+                        request.type = 'R';
+                        pad_string(sendData.data, 10 - strlen(sendData.data));
+                        strcat(request.data, sendData.data);
+
+                        if (write(s, &request, sizeof(request.data) + 1) < 0) {
+                            fprintf(stderr, "Writing failed.");
+                        }
+
+                        memset(data, 0, sizeof((data)));
+                        read(s, data, BUFSIZE);
+                        printf("RAW data: %s\n", data);
+                
+                        response.type = data[0];
+                        for (int i = 0; i < BUFSIZE; i++) {
+                            response.data[i] = data[i + 1];
+                        }                
+                        
+                        if (response.type == 'A') {
+                            tmp = strtok(response.data, delim);
+                            printf("Content has been successfully registered.\nContent name: %s\n", tmp);
+                            tmp = strtok(NULL, delim);
+                            printf("Port number: %s\n", tmp);
+
+                            // Add content to local contents list
+                            for (int i = 0; i < sizeof(save_sendData_data); i++){
+                                local_registers[local_register_count][i] = save_sendData_data[i];
+                            }
+                            local_register_count++;
+
+                            pid_t new_pid;
+                            
+                            new_pid = fork();
+                            if (new_pid == 0) {
+                                struct sockaddr_in content_server_addr, content_client_addr;
+                                socklen_t content_client_len; 
+
+                                memset(&content_server_addr, 0, sizeof(content_server_addr));
+                                memset(&content_client_addr, 0, sizeof(content_client_addr));
+
+                                // Create a socket stream 
+                                int sd; 
+                                memset(&sd, 0, sizeof(sd));
+                                if ((sd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+                                    printf("socker error\n");
+                                }
+
+                                // Bind an address to the socket
+                                bzero((char*)&content_server_addr, sizeof(struct sockaddr_in));
+                                content_server_addr.sin_family = AF_INET; 
+                                content_server_addr.sin_port = htons(atoi(tmp));
+                                content_server_addr.sin_addr.s_addr = htonl(INADDR_ANY); 
+
+                                if (bind(sd, (struct sockaddr*)&content_server_addr, sizeof(content_server_addr)) == -1) {
+                                    printf("bind error\n");
+                                    printf("error code: %d\n", errno);
+                                }
+
+                                listen(sd, 5);
+
+                                content_client_len = sizeof(content_client_addr);
+                                while (1) {
+                                    int clientSocket = 0; 
+                                    clientSocket = accept(sd, (struct sockaddr*)&content_client_addr, &content_client_len);
+                                    if (clientSocket < 0) {
+                                        printf("can't accept client\n");
+                                    }
+
+                                    printf("clientSocket: %d\n", clientSocket);
+                                    char d_data[101];
+                                    memset(d_data, '\0', sizeof(d_data));
+                                    read(clientSocket, d_data, sizeof(d_data));
+                                    
+                                    // printf("Got: %s\n", d_data);
+
+                                    // recievedData.type = d_data[0];
+                                    // for (int i = 0; i < BUFSIZE; i++) {
+                                    //     recievedData.data[i] = d_data[i + 1];
+                                    // }
+
+                                    // // now we have file name
+                                    // char to_open_file_path[20];
+                                    // strcpy(to_open_file_path, "./");
+                                    // strcat(to_open_file_path, recievedData.data);
+                                    // printf("The file path is: %s\n", to_open_file_path);
+
+                                    // read_file(clientSocket, to_open_file_path);
+                                    // break;
+                                }
+                            }
+                        }
+                        else {
+                            printf("Registration Unsuccessful.\n");
                         }
                     }                    
-                    //close (fileClientSocket);
 
                 } else {
                     printf("%s\n", response.data);
@@ -578,6 +676,7 @@ void pad_string(char str[], int padding_amount) {
 }
 
 int random_number_in_range (int lower, int upper) {
+    srand(time(NULL));
     return (rand() % (upper - lower + 1)) + lower;
 }
 
@@ -594,12 +693,15 @@ int read_file(int sd, char file_name[]) {
         printf("File is there!\n");
         write(sd, "1", 1);
         while (fgets(buf, BUFSIZE, fp) != NULL) {
-            printf("Buf: %s\n", buf);
             write(sd, buf, BUFSIZE);
         }
     }
 
     fclose(fp);
     close(sd);
+    printf("TCP Connection closed \n");
+}
 
+void create_content_server() {
+    
 }
