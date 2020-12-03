@@ -195,28 +195,14 @@ int main (int argc, char** argv) {
                  printf("PDU Type: %c\n", request.type);
                  printf("PDU Data: %s\n", request.data);
 
-                 char search_name[10];
                  char search_content[10];
                 
-                 // Get peer name 
-                 tmp = strtok(request.data, delim);
-                 strcpy(search_name, tmp);
-
-                 // Get content name 
-                 tmp = strtok(NULL, delim);
-                 strcpy(search_content, tmp);
+                 get_attribute(search_content, sizeof(search_content), 33);
+                 printf("The search content is: %s\n", search_content);
 
                  for (int i = 0; i < registered_contents_count; i++){
                      if (strcmp(registered_contents[i].content_name, search_content) == 0) {
-                         strcat(response.data, "Peer name: ");
-                         strcat(response.data, registered_contents[i].name);
-                         strcat(response.data, "\n");
-                         strcat(response.data, "IP: ");
-                         strcat(response.data, registered_contents[i].ip);
-                         strcat(response.data, "\n");
-                         strcat(response.data, "Port: ");
                          strcat(response.data, registered_contents[i].port);
-                         strcat(response.data, "\n");
                          found = 1;
                          break;
                      }

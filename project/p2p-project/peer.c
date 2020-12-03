@@ -34,7 +34,7 @@ int main (int argc, char** argv) {
     int s; //UDP server socket
     int port;
     char *host;
-    char user_name[10], content_name[10], to_deregister[10], old_content_name[10];
+    char user_name[10], content_name[10], to_deregister[10], old_content_name[10], to_download[10];
     char command;
     struct sockaddr_in server;
     int server_len;
@@ -226,8 +226,34 @@ int main (int argc, char** argv) {
                 // Once all data is sent, the TCP connection is terminated 
                 // A message is sent to the content server to register the peer as the new content server for the downloaded content 
                 
+                
+                printf("What content would you like to download?\n");
+                printf("END DEBUGGING\n");
                 print_options();
                 break;
+                // fgets(to_download, sizeof(to_download), stdin);
+                // printf("The to_download string is: %s\n", to_download);
+
+                // Check if the content is in the local registers list already
+                // found_local = 0;
+                // for (int i = 0; i < local_register_count; i++) {
+                //     memset(local_string, 0, sizeof(local_string));
+                //     for (int j = 0; j < 10; j++) {
+                //         local_string[j] = local_registers[i][j];
+                //         if (j == 9) {
+                //             if (strcmp(local_string, to_download) == 0) {
+                //                 found_local = 1;
+                //                 break;
+                //             }
+                //         }
+                //     }
+                // }
+
+                // if (found_local == 1) {
+                //     printf("The content has already been registered by this peer.\n");
+                //     print_options();
+                //     break;
+                // }
             case 'S':
                 // Search for Content and Associated Content Server
                 printf("Enter the content name\n");

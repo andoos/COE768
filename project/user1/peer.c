@@ -28,13 +28,14 @@ char* int_to_string(int x);
 void stuffString(char arr[]);
 void print_options();
 void pad_string(char str[], int padding_amount);
+int random_number_in_range (int lower, int upper) ;
 
 int main (int argc, char** argv) {
 
     int s; //UDP server socket
     int port;
     char *host;
-    char user_name[10], content_name[10], to_deregister[10], old_content_name[10], tmp_user_name[10];
+    char user_name[10], content_name[10], to_deregister[10], old_content_name[10], tmp_user_name[10], to_download[10];
     char command;
     struct sockaddr_in server;
     int server_len;
@@ -117,6 +118,7 @@ int main (int argc, char** argv) {
         strcat(request.data, ip);
 
         //Port String, next 8 bytes - **port cannot be larger than 7 digits
+        port = random_number_in_range(5000, 50000);
         char* port_str = int_to_string(port);
         int port_padding = 8 - strlen(port_str);
         pad_string(port_str, port_padding);
@@ -223,6 +225,62 @@ int main (int argc, char** argv) {
                 // Once all data is sent, the TCP connection is terminated 
                 // A message is sent to the content server to register the peer as the new content server for the downloaded content 
                 
+                memset(to_download, 0, sizeof(to_download));
+                printf("What content would you like to download?\n");
+                n = read(0, to_download, sizeof(to_download));
+
+                // //Check if the content is in the local registers list already
+                // found_local = 0;
+                // for (int i = 0; i < local_register_count; i++) {
+                //     memset(local_string, 0, sizeof(local_string));
+                //     for (int j = 0; j < 10; j++) {
+                //         local_string[j] = local_registers[i][j];
+                //         if (j == 9) {
+                //             if (strcmp(local_string, to_download) == 0) {
+                //                 found_local = 1;
+                //                 break;
+                //             }
+                //         }
+                //     }
+                // }
+
+                // if (found_local == 1) {
+                //     printf("The content has already been registered by this peer.\n");
+                //     print_options();
+                //     break;
+                // }
+
+                //Send an S type PDU to index_server.c
+                request.type = 'S';
+
+                int to_download_padding = 10 - n;
+                pad_string(to_download, to_download_padding);
+                strcat(request.data, to_download);
+
+                if (write(s, &request, sizeof(request.data) + 1) < 0) {
+                    fprintf(stderr, "Writing failed.");
+                }              
+
+                // Recieve acknowledgement from server
+                read(s, data, sizeof(data));
+
+                response.type = data[0];
+                for (int i = 0; i < BUFSIZE; i++) {
+                    response.data[i] = data[i + 1];
+                }
+
+                if (response.type == 'S') {
+                    printf("Found the content!\n");
+                    printf("The current port is: %d\n", port);
+                    printf("The port to set the TCP connection with is: %d\n", atoi(response.data));
+
+                    //SET UP TCP Connection
+
+                } else {
+                    printf("%s\n", response.data);
+                }
+                
+
                 print_options();
                 break;
              case 'S':
@@ -281,7 +339,7 @@ int main (int argc, char** argv) {
                     for (int j = 0; j < 10; j++) {
                         local_string[j] = local_registers[i][j];
                         if (j == 9) {
-                            if (strcmp(local_string, to_deregister) == 0) {
+                            if (strcmp(local_string, strtok(to_deregister, "\n")) == 0) {
                                 // found match
                                 for (int k = 0; k < 9; k ++) {
                                     local_registers[i][k] = '\0';
@@ -387,7 +445,7 @@ char* int_to_string(int x) {
 }
 
 void print_options() {
-    printf("\nR - Register Content\nT - Content De-Registration\nO - List of Online Registered Content\nL - List of Locally Registered Content\nS - Search for Content and Associated Content Server\nD - Content Download Request\nQ - Quit\n");
+    printf("\nR - Register Content\nT - Content De-Registration\nO - List of Online Registered Content\nL - List of Locally Registered Content\nD - Content Download Request\nQ - Quit\n");
 }
 
 void pad_string(char str[], int padding_amount) {
@@ -395,4 +453,8 @@ void pad_string(char str[], int padding_amount) {
     for (int i = 0; i < padding_amount; i++) {
         strcat(str, "$");
     }
+}
+
+int random_number_in_range (int lower, int upper) {
+    return (rand() % (upper - lower + 1)) + lower;
 }
