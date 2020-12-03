@@ -191,6 +191,7 @@ int main (int argc, char** argv) {
                     fclose(fptr);
                 }
 
+                memset(old_content_name, 0, sizeof(old_content_name));
                 strcpy(old_content_name, content_name);
                 // Content
 
@@ -264,7 +265,7 @@ int main (int argc, char** argv) {
                         char contentData[101];
                         memset(contentData, '\0', sizeof(contentData));
                         read(clientSocket, contentData, sizeof(contentData));
-                        printf("Got: %s\n", contentData);
+                        //printf("Got: %s\n", contentData);
 
                         recievedData.type = contentData[0];
                         for (int i = 0; i < BUFSIZE; i++) {
@@ -275,7 +276,7 @@ int main (int argc, char** argv) {
                         char to_open_file_path[20];
                         strcpy(to_open_file_path, "./");
                         strcat(to_open_file_path, recievedData.data);
-                        printf("The file path is: %s\n", to_open_file_path);
+                        //printf("The file path is: %s\n", to_open_file_path);
 
                         read_file(clientSocket, to_open_file_path);
                         break;
@@ -343,9 +344,9 @@ int main (int argc, char** argv) {
                 }
 
                 if (response.type == 'S') {
-                    printf("Found the content!\n");
-                    printf("The current port is: %d\n", port);
-                    printf("The port to set the TCP connection with is: %d\n", atoi(response.data));
+                    printf("Found content.\n");
+                    //printf("The current port is: %d\n", port);
+                    printf("TCP connection with port: %d\n", atoi(response.data));
 
                     //SET UP TCP Connection
                     struct hostent *content_server;
@@ -354,7 +355,7 @@ int main (int argc, char** argv) {
                     memset(&content_server_addr, 0 , sizeof(content_server_addr));
                     content_server_addr.sin_family = AF_INET;
                     content_server_addr.sin_port = htons(atoi(response.data));
-                    printf("%s\n", response.data);
+                    //printf("%s\n", response.data);
                     char contentAddr[9] = "localhost";
                     content_server = gethostbyname(contentAddr);
                     bcopy((char *)content_server -> h_addr, (char *) &content_server_addr.sin_addr.s_addr, content_server -> h_length);
@@ -365,7 +366,7 @@ int main (int argc, char** argv) {
                         //exit(1);
                     }
                     if (connect(fileClientSocket, (struct sockaddr*) &content_server_addr, sizeof(content_server_addr)) == -1) {
-                        printf("connect error\n");
+                        //printf("connect error\n");
                         //exit(1);
                     }
 
@@ -373,7 +374,7 @@ int main (int argc, char** argv) {
                     memset(&sendData, 0, sizeof(sendData));
                     sendData.type = 'D';
                     strcpy(sendData.data, save_to_download);
-                    printf("Sent: %s\n", sendData.data);
+                    //printf("Sent: %s\n", sendData.data);
                     write(fileClientSocket, &sendData, sizeof(sendData.data) + 1);
 
                     char buf[1];
@@ -383,12 +384,13 @@ int main (int argc, char** argv) {
                     if (strcmp(buf, "0") == 0) {
                         printf("File not open succesfully\n");
                     } else {
-                        printf("File open successfully\n");
+                        //printf("File open successfully\n");
                         FILE *fp;
 
                         strcpy(save_sendData_data, sendData.data);
                         
                         strtok(sendData.data, "\n");
+                        //printf("SENDDATA: %s\n", sendData.data);
                         fp = fopen(sendData.data, "w");
                         
                         char file_line[BUFSIZE];
@@ -398,7 +400,7 @@ int main (int argc, char** argv) {
                             fputs(file_line, fp);
                         }
 
-                        close(fileClientSocket);
+                        //close(fileClientSocket);
 
                         //register the new content to this peer
                         request.type = 'R';
@@ -411,7 +413,7 @@ int main (int argc, char** argv) {
 
                         memset(data, 0, sizeof((data)));
                         read(s, data, BUFSIZE);
-                        printf("RAW data: %s\n", data);
+                        //printf("RAW data: %s\n", data);
                 
                         response.type = data[0];
                         for (int i = 0; i < BUFSIZE; i++) {
@@ -424,7 +426,7 @@ int main (int argc, char** argv) {
                             tmp = strtok(NULL, delim);
                             printf("Port number: %s\n", tmp);
 
-                            // Add content to local contents list
+                            //Add content to local contents list
                             for (int i = 0; i < sizeof(save_sendData_data); i++){
                                 local_registers[local_register_count][i] = save_sendData_data[i];
                             }
@@ -468,10 +470,10 @@ int main (int argc, char** argv) {
                                         printf("can't accept client\n");
                                     }
 
-                                    printf("clientSocket: %d\n", clientSocket);
-                                    char d_data[101];
-                                    memset(d_data, '\0', sizeof(d_data));
-                                    read(clientSocket, d_data, sizeof(d_data));
+                                    //printf("clientSocket: %d\n", clientSocket);
+                                    //char d_data[101];
+                                    //memset(d_data, '\0', sizeof(d_data));
+                                    //read(clientSocket, d_data, sizeof(d_data));
                                     
                                     // printf("Got: %s\n", d_data);
 
@@ -492,7 +494,7 @@ int main (int argc, char** argv) {
                             }
                         }
                         else {
-                            printf("Registration Unsuccessful.\n");
+                            //printf("Registration Unsuccessful.\n");
                         }
                     }                    
 
@@ -559,8 +561,7 @@ int main (int argc, char** argv) {
                     for (int j = 0; j < 10; j++) {
                         local_string[j] = local_registers[i][j];
                         if (j == 9) {
-                            if (strcmp(local_string, strtok(to_deregister, "\n")) == 0) {
-                                // found match
+                            if (strcmp(local_string, to_deregister) == 0) {
                                 for (int k = 0; k < 9; k ++) {
                                     local_registers[i][k] = '\0';
                                 }
@@ -588,10 +589,10 @@ int main (int argc, char** argv) {
                 }                
                
                 if (response.type == 'A') {
-                    printf("%s\n", response.data);
+                    //printf("%s\n", response.data);
                 }
                 else {
-                    printf("%s\n", response.data);
+                    //printf("%s\n", response.data);
                 }
 
                 print_options();
@@ -636,6 +637,8 @@ int main (int argc, char** argv) {
                 break;
             case 'Q':
                 request.type = 'Q';
+
+                strcpy(request.data, user_name);
                 
                 if (write(s, &request, sizeof(request.data) + 1) < 0) {
                     fprintf(stderr, "Writing failed.");
@@ -690,7 +693,7 @@ int read_file(int sd, char file_name[]) {
     if (fp == NULL) {
         write(sd, "0", 1);
     } else {
-        printf("File is there!\n");
+        //printf("File is there!\n");
         write(sd, "1", 1);
         while (fgets(buf, BUFSIZE, fp) != NULL) {
             write(sd, buf, BUFSIZE);
@@ -699,7 +702,7 @@ int read_file(int sd, char file_name[]) {
 
     fclose(fp);
     close(sd);
-    printf("TCP Connection closed \n");
+    //printf("TCP Connection closed \n");
 }
 
 void create_content_server() {

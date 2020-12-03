@@ -107,7 +107,7 @@ int main (int argc, char** argv) {
         memset(data, 0, 101);
         // Recieve a datagram from a peer - 
         recvfrom(s, data, sizeof(data), 0, (struct sockaddr *)&client, &client_len);
-        printf("Raw Data: %s\n", data);
+        //printf("Raw Data: %s\n", data);
         request.type = data[0];
 
         for (int i = 0; i < BUFSIZE; i++) {
@@ -123,9 +123,7 @@ int main (int argc, char** argv) {
             	// The user can write the first 3 parameters and all that needs to be done is parsing 
             	// The port number can be decided by the server or specified by the peer
             	// After all information has been gathered, we will write back a message to the peer with the port number 
-                printf("PDU Type: %c\n", request.type);
-                printf("PDU Data: %s\n", request.data);
-		
+
 		        // Get name - first 9 bytes
                 get_attribute(tmp_peer.name, 9, 0);
 
@@ -137,7 +135,7 @@ int main (int argc, char** argv) {
 
                 // Get content name - next 9 bytes
                 get_attribute(tmp_peer.content_name, 9, 33);
-                content_peer_to_string(tmp_peer);
+                //content_peer_to_string(tmp_peer);
 
                 // Check duplicates
                 found_duplicate = 0;
@@ -192,25 +190,28 @@ int main (int argc, char** argv) {
                 break;
             case 'S':
                  // Search for Content and Associated Content Server 
-                 printf("PDU Type: %c\n", request.type);
-                 printf("PDU Data: %s\n", request.data);
+                //  printf("PDU Type: %c\n", request.type);
+                //  printf("PDU Data: %s\n", request.data);
+                printf("\n");
 
                  char search_content[10];
                 
                  get_attribute(search_content, sizeof(search_content), 33);
-                 printf("The search content is: %s\n", search_content);
+                 //printf("The search content is: %s\n", search_content);
 
                 int max_i = 0;
                  for (int i = 0; i < registered_contents_count; i++){
-                     if (strcmp(registered_contents[i].content_name, search_content) == 0) {
-                        if (i > max_i) {
-                            max_i = i;
-                        } 
+                     if (strcmp(registered_contents[i].content_name, "deregister") != 0) {
+                        if (strcmp(registered_contents[i].content_name, search_content) == 0) {
+                            found = 1;
+                            if (i > max_i) {
+                                max_i = i;
+                            } 
+                        }
                      }
                  }
 
                 strcat(response.data, registered_contents[max_i].port);
-                found = 1;
 
                  if (found == 1) {
                      found = 0;
@@ -229,7 +230,6 @@ int main (int argc, char** argv) {
                 //get the content string you need to compare with from the request.data
                 memset(to_deregister, 0, sizeof(to_deregister));
                 get_attribute(to_deregister, 9, 33);
-                printf("The to_deregister string is: %s\n", to_deregister);
 
                 for (int i = 0; i < registered_contents_count; i++) {
                     if (strcmp(registered_contents[i].content_name, "deregister") != 0) {
@@ -273,8 +273,22 @@ int main (int argc, char** argv) {
                 // Not going to reset online content on individual peer quit
                 // memset(registered_contents, 0, sizeof(registered_contents));
                 // registered_contents_count = 0;
+                //printf("PDU Type: %c\n", request.type);
+                //printf("PDU Data: %s\n", request.data);
+                strtok(request.data, "\n");
 
-                response.type = 'Q';
+                for (int i = 0; i < registered_contents_count; i++) {
+                    if (strcmp(registered_contents[i].content_name, "deregister") != 0) {
+                        if (strcmp(registered_contents[i].name, request.data) == 0) {
+                            registered_contents[i].name[0] = '\0'; 
+                            strcpy(registered_contents[i].content_name, "deregister");
+                            registered_contents[i].ip[0] = '\0';
+                            registered_contents[i].port[0] = '\0';
+                            found = 1;
+                        }
+                    }  
+                }
+
                 strcpy(response.data, "Quitting...");
                 sendto(s, &response, strlen(response.data) + 1, 0, (struct sockaddr *)&client, sizeof(client));
                 break;
