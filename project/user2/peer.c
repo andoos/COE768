@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <errno.h>
 
 #define BUFSIZE 100
 
@@ -16,6 +17,11 @@ struct pdu {
     char type;
     char data[100];
 } request, response, tmp_pdu;
+
+typedef struct content_pdu {
+    char type;
+    char data[100];
+} content_pdu;
 
 struct Content {
     char name[10];
@@ -28,17 +34,21 @@ char* int_to_string(int x);
 void stuffString(char arr[]);
 void print_options();
 void pad_string(char str[], int padding_amount);
+int random_number_in_range (int lower, int upper) ;
+int read_file(int sd, char file_name[]);
 
 int main (int argc, char** argv) {
 
     int s; //UDP server socket
     int port;
     char *host;
-    char user_name[10], content_name[10], to_deregister[10], old_content_name[10], to_download[10];
+    char user_name[10], content_name[10], to_deregister[10], old_content_name[10], tmp_user_name[10], to_download[10], save_to_download[10];
     char command;
     struct sockaddr_in server;
     int server_len;
     struct hostent *phe;
+    content_pdu sendData;
+    content_pdu recievedData;
     char data[101];
     int n;
     const char delim[] = "$"; 
@@ -51,6 +61,9 @@ int main (int argc, char** argv) {
     char local_registers[100][10];
     int local_register_count = 0;
     int found_local;
+    pid_t pid;
+    int sd;
+    char content_server_data[101];
 
     switch(argc) {
         case 3:
@@ -117,6 +130,7 @@ int main (int argc, char** argv) {
         strcat(request.data, ip);
 
         //Port String, next 8 bytes - **port cannot be larger than 7 digits
+        port = random_number_in_range(5000, 50000);
         char* port_str = int_to_string(port);
         int port_padding = 8 - strlen(port_str);
         pad_string(port_str, port_padding);
@@ -162,12 +176,9 @@ int main (int argc, char** argv) {
                 strcpy(file_name, content_name);
                 strtok(file_name, "\n");
 
-                printf("The file name is: %s\n", file_name);
-
                 memset(path, 0, sizeof(path));
-                strcat(path, "//home//marvin//coe768//project//user1//");
+                strcat(path, "./");
                 strcat(path, file_name);
-                printf("The path we are looking for is: %s\n", path);
 
                 if ((fptr = fopen(path, "r")) == NULL) {
                     printf("No file matching the given content.\n");
@@ -212,6 +223,64 @@ int main (int argc, char** argv) {
                 else {
                     printf("Registration Unsuccessful.\n");
                 }
+
+                // Open up a tcp connection 
+                pid = fork();
+                if (pid == 0) {
+                    struct sockaddr_in content_server_addr, content_client_addr;
+                    socklen_t content_client_len; 
+
+                    memset(&content_server_addr, 0, sizeof(content_server_addr));
+                    memset(&content_client_addr, 0, sizeof(content_client_addr));
+
+                    // Create a socket stream 
+                    int sd; 
+                    if ((sd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+                        printf("socker error\n");
+                    }
+
+                    // Bind an address to the socket
+                    bzero((char*)&content_server_addr, sizeof(struct sockaddr_in));
+                    content_server_addr.sin_family = AF_INET; 
+                    content_server_addr.sin_port = htons(port);
+                    content_server_addr.sin_addr.s_addr = htonl(INADDR_ANY); 
+
+                    if (bind(sd, (struct sockaddr*)&content_server_addr, sizeof(content_server_addr)) == -1) {
+                        printf("bind error\n");
+                        printf("error code: %d\n", errno);
+                    }
+
+                    listen(sd, 5);
+
+                    content_client_len = sizeof(content_client_addr);
+                    while (1) {
+                        int clientSocket = accept(sd, (struct sockaddr*)&content_client_addr, &content_client_len);
+                        if (clientSocket < 0) {
+                            printf("can't accept client\n");
+                        }
+
+                        char contentData[101];
+                        memset(contentData, '\0', sizeof(contentData));
+                        read(clientSocket, contentData, sizeof(contentData));
+                        printf("Got: %s\n", contentData);
+
+                        recievedData.type = contentData[0];
+                        for (int i = 0; i < BUFSIZE; i++) {
+                            recievedData.data[i] = contentData[i + 1];
+                        }
+
+                        // now we have file name
+                        char to_open_file_path[20];
+                        strcpy(to_open_file_path, "./");
+                        strcat(to_open_file_path, recievedData.data);
+                        printf("The file path is: %s\n", to_open_file_path);
+
+                        read_file(clientSocket, to_open_file_path);
+
+                        
+                    }
+                }
+
                 print_options();
                 break;
 
@@ -226,74 +295,159 @@ int main (int argc, char** argv) {
                 // Once all data is sent, the TCP connection is terminated 
                 // A message is sent to the content server to register the peer as the new content server for the downloaded content 
                 
-                
+                memset(to_download, 0, sizeof(to_download));
+                memset(save_to_download, 0, sizeof(save_to_download));
                 printf("What content would you like to download?\n");
-                printf("END DEBUGGING\n");
-                print_options();
-                break;
-                // fgets(to_download, sizeof(to_download), stdin);
-                // printf("The to_download string is: %s\n", to_download);
+                n = read(0, to_download, sizeof(to_download));
+                strcpy(save_to_download, to_download);
 
-                // Check if the content is in the local registers list already
-                // found_local = 0;
-                // for (int i = 0; i < local_register_count; i++) {
-                //     memset(local_string, 0, sizeof(local_string));
-                //     for (int j = 0; j < 10; j++) {
-                //         local_string[j] = local_registers[i][j];
-                //         if (j == 9) {
-                //             if (strcmp(local_string, to_download) == 0) {
-                //                 found_local = 1;
-                //                 break;
-                //             }
-                //         }
-                //     }
-                // }
+                //Check if the content is in the local registers list already
+                found_local = 0;
+                for (int i = 0; i < local_register_count; i++) {
+                    memset(local_string, 0, sizeof(local_string));
+                    for (int j = 0; j < 10; j++) {
+                        local_string[j] = local_registers[i][j];
+                        if (j == 9) {
+                            if (strcmp(local_string, to_download) == 0) {
+                                found_local = 1;
+                                break;
+                            }
+                        }
+                    }
+                }
 
-                // if (found_local == 1) {
-                //     printf("The content has already been registered by this peer.\n");
-                //     print_options();
-                //     break;
-                // }
-            case 'S':
-                // Search for Content and Associated Content Server
-                printf("Enter the content name\n");
-                n = read(0, content_name, BUFSIZE);
+                if (found_local == 1) {
+                    printf("The content has already been registered by this peer.\n");
+                    print_options();
+                    break;
+                }
 
+                //Send an S type PDU to index_server.c
                 request.type = 'S';
-                printf("%s", request.data);
-                
-                // Delim bug - appending more than one delimiter messing up the 
-                
-                strtok(user_name, "\n");
-                strcat(user_name, delim);
-                strcpy(request.data, user_name);
-                
-                printf("The content name is: %s", content_name);
-                strtok(content_name, "\n");
-                strcat(content_name, delim);
-                strcat(request.data, content_name);
+
+                int to_download_padding = 10 - n;
+                pad_string(to_download, to_download_padding);
+                strcat(request.data, to_download);
 
                 if (write(s, &request, sizeof(request.data) + 1) < 0) {
                     fprintf(stderr, "Writing failed.");
                 }              
 
-                read(s, data, BUFSIZE);
-                
+                // Recieve acknowledgement from server
+                read(s, data, sizeof(data));
+
                 response.type = data[0];
                 for (int i = 0; i < BUFSIZE; i++) {
                     response.data[i] = data[i + 1];
-                }  
+                }
 
                 if (response.type == 'S') {
-                    printf("Content found!\n");
+                    printf("Found the content!\n");
+                    printf("The current port is: %d\n", port);
+                    printf("The port to set the TCP connection with is: %d\n", atoi(response.data));
+
+                    //SET UP TCP Connection
+                    struct hostent *content_server;
+                    struct sockaddr_in content_server_addr; 
+
+                    memset(&content_server_addr, 0 , sizeof(content_server_addr));
+                    content_server_addr.sin_family = AF_INET;
+                    content_server_addr.sin_port = htons(atoi(response.data));
+                    printf("%s\n", response.data);
+                    char contentAddr[9] = "localhost";
+                    content_server = gethostbyname(contentAddr);
+                    bcopy((char *)content_server -> h_addr, (char *) &content_server_addr.sin_addr.s_addr, content_server -> h_length);
+
+                    int fileClientSocket; 
+                    if ((fileClientSocket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+                        printf("socket error\n");
+                        //exit(1);
+                    }
+                    if (connect(fileClientSocket, (struct sockaddr*) &content_server_addr, sizeof(content_server_addr)) == -1) {
+                        printf("connect error\n");
+                        //exit(1);
+                    }
+
+                    // After connection is established, peer sends a D type PDU with content name to initiate the download 
+                    memset(&sendData, 0, sizeof(sendData));
+                    sendData.type = 'D';
+                    strcpy(sendData.data, save_to_download);
+                    printf("Sent: %s\n", sendData.data);
+                    write(fileClientSocket, &sendData, sizeof(sendData.data) + 1);
+
+                    char buf[1];
+                    memset(buf, 0, sizeof(buf));
+                    read(fileClientSocket, buf, sizeof(buf));
+
+                    if (strcmp(buf, "0") == 0) {
+                        printf("File not open succesfully\n");
+                    } else {
+                        printf("File open successfully\n");
+                        FILE *fp;
+                        
+                        strtok(sendData.data, "\n");
+                        fp = fopen(sendData.data, "w");
+                        
+                        char file_line[BUFSIZE];
+
+                        while (read(fileClientSocket, file_line, sizeof(file_line))) {
+                            printf("file_line: %s\n", file_line);
+                            fseek(fp, 0, SEEK_CUR);
+                            printf("%d\n", fputs(file_line, fp));
+                        }
+                    }                    
+                    //close (fileClientSocket);
+
+                } else {
                     printf("%s\n", response.data);
                 }
-                else {
-                    printf("%s\n", response.data);
-                }
+                
 
                 print_options();
                 break;
+             case 'S':
+                 // Search for Content and Associated Content Server
+                 memset(content_name, 0, sizeof(content_name));
+                 memset(request.data, 0, 100);
+                 printf("Enter the content name\n");
+                 n = read(0, content_name, BUFSIZE);
+
+                 request.type = 'S';
+                 //printf("%s", request.data);
+                
+                 // Delim bug - appending more than one delimiter messing up the 
+                strcpy(tmp_user_name, user_name); // temp fix, will change to use other logic later
+
+                 strtok(tmp_user_name, "\n");
+                 strcat(tmp_user_name, delim);
+                 strcpy(request.data, tmp_user_name);
+                
+                 //printf("The content name is: %s", content_name);
+                 strtok(content_name, "\n");
+                 strcat(content_name, delim);
+                 strcat(request.data, content_name);
+
+                 if (write(s, &request, sizeof(request.data) + 1) < 0) {
+                     fprintf(stderr, "Writing failed.");
+                 }              
+
+                 read(s, data, BUFSIZE);
+                
+                 response.type = data[0];
+                 for (int i = 0; i < BUFSIZE; i++) {
+                     response.data[i] = data[i + 1];
+                 }  
+
+                 if (response.type == 'S') {
+                     printf("Content found!\n");
+                     printf("%s\n", response.data);
+                 }
+                 else {
+                    printf("%s\n", response.data);
+                 }
+
+                 print_options();
+                 break;
             case 'T':
                 // Content De-Registration
                 printf("Enter the content name\n");
@@ -307,7 +461,7 @@ int main (int argc, char** argv) {
                     for (int j = 0; j < 10; j++) {
                         local_string[j] = local_registers[i][j];
                         if (j == 9) {
-                            if (strcmp(local_string, to_deregister) == 0) {
+                            if (strcmp(local_string, strtok(to_deregister, "\n")) == 0) {
                                 // found match
                                 for (int k = 0; k < 9; k ++) {
                                     local_registers[i][k] = '\0';
@@ -336,18 +490,13 @@ int main (int argc, char** argv) {
                 }                
                
                 if (response.type == 'A') {
-                        printf("Content has been successfully de-registered.\n");
-                        printf("%s\n", response.data);
+                    printf("%s\n", response.data);
                 }
                 else {
-                    printf("De-Registration Unsuccessful.\n");
                     printf("%s\n", response.data);
                 }
 
                 print_options();
-                break;
-            case 'C':
-                // Content Data (download)
                 break;
             case 'O':
                 // List of Online Registered Content 
@@ -387,9 +536,25 @@ int main (int argc, char** argv) {
 
                 print_options();
                 break;
+            case 'Q':
+                request.type = 'Q';
+                
+                if (write(s, &request, sizeof(request.data) + 1) < 0) {
+                    fprintf(stderr, "Writing failed.");
+                }
+
+                read(s, data, BUFSIZE);
+
+                response.type = data[0];
+                for (int i = 0; i < BUFSIZE; i++) {
+                    response.data[i] = data[i + 1];
+                }
+
+                printf("%s\n", response.data);
+                exit(0);
+
             // default:
-            //     fprintf(stderr, "Invalid command type: %c\n", command);
-                //break;
+            //     print_options();
         }
     }
 }
@@ -402,7 +567,7 @@ char* int_to_string(int x) {
 }
 
 void print_options() {
-    printf("\nR - Register Content\nD - Content Download Request\nS - Search for Content and Associated Content Server\nT - Content De-Registration\nO - List of Online Registered Content\nL - List of Locally Registered Content\n");
+    printf("\nR - Register Content\nT - Content De-Registration\nO - List of Online Registered Content\nL - List of Locally Registered Content\nD - Content Download Request\nQ - Quit\n");
 }
 
 void pad_string(char str[], int padding_amount) {
@@ -410,4 +575,31 @@ void pad_string(char str[], int padding_amount) {
     for (int i = 0; i < padding_amount; i++) {
         strcat(str, "$");
     }
+}
+
+int random_number_in_range (int lower, int upper) {
+    return (rand() % (upper - lower + 1)) + lower;
+}
+
+int read_file(int sd, char file_name[]) {
+    char buf[BUFSIZE];
+    FILE *fp;
+    strtok(file_name, "\n");
+    fp = fopen(file_name, "r");
+    content_pdu file_io;
+
+    if (fp == NULL) {
+        write(sd, "0", 1);
+    } else {
+        printf("File is there!\n");
+        write(sd, "1", 1);
+        while (fgets(buf, BUFSIZE, fp) != NULL) {
+            printf("Buf: %s\n", buf);
+            write(sd, buf, BUFSIZE);
+        }
+    }
+
+    fclose(fp);
+    close(sd);
+
 }
