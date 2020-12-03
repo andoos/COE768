@@ -9,13 +9,14 @@
 #include <sys/stat.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <errno.h>
 
 #define BUFSIZE 100
 
 struct pdu {
     char type;
     char data[100];
-} request, response, tmp_pdu;
+} request, response, tmp_pdu, sendData;
 
 struct Content {
     char name[10];
@@ -52,6 +53,8 @@ int main (int argc, char** argv) {
     char local_registers[100][10];
     int local_register_count = 0;
     int found_local;
+    pid_t pid;
+    int sd;
 
     switch(argc) {
         case 3:
@@ -211,6 +214,49 @@ int main (int argc, char** argv) {
                 else {
                     printf("Registration Unsuccessful.\n");
                 }
+
+                // Open up a tcp connection 
+                pid = fork();
+                if (pid == 0) {
+                    struct sockaddr_in content_server_addr, content_client_addr;
+                    socklen_t content_client_len; 
+
+                    memset(&content_server_addr, 0, sizeof(content_server_addr));
+                    memset(&content_client_addr, 0, sizeof(content_client_addr));
+
+                    // Create a socket stream 
+                    int sd; 
+                    if ((sd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+                        printf("socker error\n");
+                    }
+
+                    // Bind an address to the socket
+                    bzero((char*)&content_server_addr, sizeof(struct sockaddr_in));
+                    content_server_addr.sin_family = AF_INET; 
+                    content_server_addr.sin_port = htons(port);
+                    content_server_addr.sin_addr.s_addr = htonl(INADDR_ANY); 
+
+                    if (bind(sd, (struct sockaddr*)&content_server_addr, sizeof(content_server_addr)) == -1) {
+                        printf("bind error\n");
+                        printf("error code: %d\n", errno);
+                    }
+
+                    listen(sd, 5);
+
+                    content_client_len = sizeof(content_client_addr);
+                    while (1) {
+                        int clientSocket = accept(sd, (struct sockaddr*)&content_client_addr, &content_client_len);
+                        if (clientSocket < 0) {
+                            printf("can't accept client\n");
+                        }
+
+                        char contentData[10];
+                        memset(contentData, '\0', sizeof(contentData));
+                        read(clientSocket, contentData, sizeof(contentData));
+                        printf("Got: %s\n", contentData);
+                    }
+                }
+
                 print_options();
                 break;
 
@@ -229,26 +275,26 @@ int main (int argc, char** argv) {
                 printf("What content would you like to download?\n");
                 n = read(0, to_download, sizeof(to_download));
 
-                // //Check if the content is in the local registers list already
-                // found_local = 0;
-                // for (int i = 0; i < local_register_count; i++) {
-                //     memset(local_string, 0, sizeof(local_string));
-                //     for (int j = 0; j < 10; j++) {
-                //         local_string[j] = local_registers[i][j];
-                //         if (j == 9) {
-                //             if (strcmp(local_string, to_download) == 0) {
-                //                 found_local = 1;
-                //                 break;
-                //             }
-                //         }
-                //     }
-                // }
+                //Check if the content is in the local registers list already
+                found_local = 0;
+                for (int i = 0; i < local_register_count; i++) {
+                    memset(local_string, 0, sizeof(local_string));
+                    for (int j = 0; j < 10; j++) {
+                        local_string[j] = local_registers[i][j];
+                        if (j == 9) {
+                            if (strcmp(local_string, to_download) == 0) {
+                                found_local = 1;
+                                break;
+                            }
+                        }
+                    }
+                }
 
-                // if (found_local == 1) {
-                //     printf("The content has already been registered by this peer.\n");
-                //     print_options();
-                //     break;
-                // }
+                if (found_local == 1) {
+                    printf("The content has already been registered by this peer.\n");
+                    print_options();
+                    break;
+                }
 
                 //Send an S type PDU to index_server.c
                 request.type = 'S';
@@ -275,6 +321,34 @@ int main (int argc, char** argv) {
                     printf("The port to set the TCP connection with is: %d\n", atoi(response.data));
 
                     //SET UP TCP Connection
+                    struct hostent *content_server;
+                    struct sockaddr_in content_server_addr; 
+
+                    memset(&content_server_addr, 0 , sizeof(content_server_addr));
+                    content_server_addr.sin_family = AF_INET;
+                    content_server_addr.sin_port = htons(atoi(response.data));
+                    printf("%s\n", response.data);
+                    char contentAddr[9] = "localhost";
+                    content_server = gethostbyname(contentAddr);
+                    bcopy((char *)content_server -> h_addr, (char *) &content_server_addr.sin_addr.s_addr, content_server -> h_length);
+
+                    int fileClientSocket; 
+                    if ((fileClientSocket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+                        printf("socket error\n");
+                        //exit(1);
+                    }
+                    if (connect(fileClientSocket, (struct sockaddr*) &content_server_addr, sizeof(content_server_addr)) == -1) {
+                        printf("connect error\n");
+                        //exit(1);
+                    }
+
+                    // After connection is established, peer sends a D type PDU with content name to initiate the download 
+                    memset(sendData.data, '\0', sizeof(sendData.data));
+                    sendData.type = 'D';
+                    strtok(to_download, "\n");
+                    strcpy(sendData.data, to_download);
+                    printf("Sent: %s\n", sendData.data);
+                    write(fileClientSocket, &sendData, sizeof(sendData.data) + 1);
 
                 } else {
                     printf("%s\n", response.data);
