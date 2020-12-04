@@ -13,7 +13,6 @@
 #define SERVER_TCP_PORT 3000	/* well-known port */
 #define BUFLEN		100	/* buffer length */
 
-char *read_file_name(int sd);
 int read_file(int);
 void reaper(int);
 
