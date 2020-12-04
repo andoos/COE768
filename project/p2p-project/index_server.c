@@ -155,12 +155,13 @@ int main(int argc, char **argv)
                 }
             }
 
-            // if (found_duplicate == 1) {
-            //     found_duplicate = 0;
-            //     response.type = 'E';
-            //     sendto(s, &response, strlen(response.data) + 1, 0, (struct sockaddr *)&client, sizeof(client));
-            //     break;
-            // }
+            if (found_duplicate == 1)
+            {
+                found_duplicate = 0;
+                response.type = 'E';
+                sendto(s, &response, strlen(response.data) + 1, 0, (struct sockaddr *)&client, sizeof(client));
+                break;
+            }
 
             // Add peer information to registered peers list
             registered_contents[registered_contents_count] = tmp_peer;
